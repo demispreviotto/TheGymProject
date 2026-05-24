@@ -209,3 +209,71 @@ INSERT INTO public.exercises (name, definition, recommendations, muscle_groups) 
    'Spinal flexion exercise pulling a rope cable downward while kneeling.',
    'Keep hips stationary — the movement is at the spine only. Round the lumbar toward the floor.',
    '[{"name":"Rectus Abdominis","intensity":"primary"},{"name":"Obliques","intensity":"secondary"}]'::jsonb);
+
+-- ---------------------------------------------------------------------------
+-- TEST PLANNING
+-- Runs after exercises so we can look up exercise IDs by name.
+-- trainer_id / client_id are fixed UUIDs from the first block above.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  trainer_id UUID := '00000000-0000-0000-0000-000000000001';
+  client_id  UUID := '00000000-0000-0000-0000-000000000002';
+  plan_id    UUID := 'aaaaaaaa-0000-0000-0000-000000000001';
+  day1_id    UUID := 'bbbbbbbb-0000-0000-0000-000000000001';
+  day2_id    UUID := 'bbbbbbbb-0000-0000-0000-000000000002';
+  day3_id    UUID := 'bbbbbbbb-0000-0000-0000-000000000003';
+  ex_bench   UUID;
+  ex_ohp     UUID;
+  ex_squat   UUID;
+  ex_rdl     UUID;
+  ex_pullup  UUID;
+  ex_row     UUID;
+BEGIN
+  SELECT id INTO ex_bench  FROM public.exercises WHERE name = 'Bench Press'       LIMIT 1;
+  SELECT id INTO ex_ohp    FROM public.exercises WHERE name = 'Overhead Press'    LIMIT 1;
+  SELECT id INTO ex_squat  FROM public.exercises WHERE name = 'Back Squat'        LIMIT 1;
+  SELECT id INTO ex_rdl    FROM public.exercises WHERE name = 'Romanian Deadlift' LIMIT 1;
+  SELECT id INTO ex_pullup FROM public.exercises WHERE name = 'Pull-Up'           LIMIT 1;
+  SELECT id INTO ex_row    FROM public.exercises WHERE name = 'Barbell Row'       LIMIT 1;
+
+  INSERT INTO public.plannings (id, tenant_id, title, use_auto_1rm)
+  VALUES (plan_id, trainer_id, 'Push / Pull / Legs — Beginner Block', true)
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.planning_days (id, planning_id, day_number)
+  VALUES
+    (day1_id, plan_id, 1),
+    (day2_id, plan_id, 2),
+    (day3_id, plan_id, 3)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Day 1 — Push
+  INSERT INTO public.prescribed_exercises
+    (planning_day_id, exercise_id, exigence, rest_time_minutes, tracking_mode, rounds, target_reps, suggested_first_weight, sorting_order)
+  VALUES
+    (day1_id, ex_bench, 'A', 2.5, 'standard', 4, 8,  60.0, 1),
+    (day1_id, ex_ohp,   'B', 2.0, 'standard', 3, 10, 40.0, 2)
+  ON CONFLICT DO NOTHING;
+
+  -- Day 2 — Pull
+  INSERT INTO public.prescribed_exercises
+    (planning_day_id, exercise_id, exigence, rest_time_minutes, tracking_mode, rounds, target_reps, suggested_first_weight, sorting_order)
+  VALUES
+    (day2_id, ex_pullup, 'A', 2.5, 'standard', 4, 6,  null, 1),
+    (day2_id, ex_row,    'B', 2.0, 'standard', 3, 10, 50.0, 2)
+  ON CONFLICT DO NOTHING;
+
+  -- Day 3 — Legs
+  INSERT INTO public.prescribed_exercises
+    (planning_day_id, exercise_id, exigence, rest_time_minutes, tracking_mode, rounds, target_reps, suggested_first_weight, sorting_order)
+  VALUES
+    (day3_id, ex_squat, 'A', 3.0, 'standard', 4, 8,  80.0, 1),
+    (day3_id, ex_rdl,   'B', 2.5, 'standard', 3, 10, 60.0, 2)
+  ON CONFLICT DO NOTHING;
+
+  -- Assign the planning to the test client
+  UPDATE public.profiles
+  SET assigned_planning_id = plan_id
+  WHERE id = client_id;
+END $$;

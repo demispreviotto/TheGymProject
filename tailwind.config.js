@@ -1,5 +1,8 @@
+const spartanPreset = require('@spartan-ng/brain/hlm-tailwind-preset');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  presets: [spartanPreset],
   content: ['./src/**/*.{html,ts}'],
   theme: {
     extend: {
