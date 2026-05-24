@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gymproject_db
+    environment:
+      POSTGRES_DB: gymdb
+      POSTGRES_USER: gymuser
+      POSTGRES_PASSWORD: gympassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - gymproject_db_data:/var/lib/postgresql/data
+      - ./docker/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymuser -d gymdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  gymproject_db_data:
+    name: gymproject_db_data
