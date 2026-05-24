@@ -9,5 +9,6 @@ export interface Profile {
   tenant_name: string | null;
   tenant_logo_svg: string | null;
   tenant_primary_hex: string;
+  assigned_planning_id: string | null;
   created_at: string;
 }
