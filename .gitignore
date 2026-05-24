@@ -1,28 +1,43 @@
-# Angular specific
+# ==========================================
+# Build Artifacts & Caches
+# ==========================================
 /dist/
 /out-tsc/
 /tmp/
 /coverage/
-/e2e/test-output/
 /.angular/
-.angular/
+*.tsbuildinfo
 
-# Node modules and dependency files
+# ==========================================
+# Dependencies
+# ==========================================
 /node_modules/
 /package-lock.json
 /yarn.lock
+/pnpm-lock.yaml
 
-# Environment files
-/.env
+# ==========================================
+# Environments & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
 
-# Angular CLI and build artefacts
-/.angular-cli.json
-/.ng/
+# ==========================================
+# Editor & AI Tooling (Cursor, VS Code, Claude)
+# ==========================================
+/.vscode/
+/.cursor/
+!/.cursor/rules/
+*.local.md
+.mcp.json
 
-# TypeScript cache
-*.tsbuildinfo
-
-# Logs
+# ==========================================
+# Testing & Logs
+# ==========================================
+/e2e/test-output/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.eslintcache

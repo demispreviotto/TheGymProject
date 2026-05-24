@@ -1,0 +1,5 @@
+{
+    "memory": {
+        "instructions": "This is a modern Angular Single Page Application. Always use standalone components, functional router guards, inject() for dependency injection, and Signal-based reactivity. Absolutely do not use legacy NgModules, old lifecycle hooks for state sync, or components that rely on Zone.js change detection streams. Follow the guidelines inside claude.md strictly."
+    }
+}
