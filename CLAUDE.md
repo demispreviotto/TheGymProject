@@ -2,6 +2,25 @@
 
 This file serves as the definitive single source of truth for the Gym Planificación web application. All code generated must comply with the patterns, constraints, and architecture outlined below.
 
+---
+
+## Current Development State
+
+**Active Phase:** Phase 5 — TBD (update this line when starting a new phase)
+
+| Phase | Status | Summary |
+|-------|--------|---------|
+| 1 — Infrastructure | ✅ Done | Docker → Supabase CLI, SQL schema, seed data |
+| 2 — Angular Scaffold | ✅ Done | Auth, ThemeService, guards, shell components |
+| 3 — Spartan UI + Planning types | ✅ Done | Spartan primitives, planning TS types, schema migration |
+| 4 — Trainer Admin Dashboard | ✅ Done | Exercise CRUD, muscle matrix CDK, planning grid Day 1–7, user assignment |
+
+**Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
+
+**Start dev:** `pnpm exec supabase start` → `pnpm start`
+
+---
+
 ## 0. Critical Execution Constraints & Environment
 
 ### Package Management

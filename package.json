@@ -7,14 +7,14 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "db:up": "docker compose up -d db",
-    "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d db",
-    "db:logs": "docker compose logs -f db",
-    "db:shell": "docker compose exec db psql -U gymuser -d gymdb"
+    "supabase:start": "pnpm exec supabase start",
+    "supabase:stop": "pnpm exec supabase stop",
+    "supabase:reset": "pnpm exec supabase db reset",
+    "supabase:studio": "pnpm exec supabase studio"
   },
   "dependencies": {
     "@angular/animations": "^19.0.0",
+    "@angular/cdk": "^19.2.19",
     "@angular/common": "^19.0.0",
     "@angular/compiler": "^19.0.0",
     "@angular/core": "^19.0.0",
