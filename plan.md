@@ -6,67 +6,127 @@ Execute development of the application linearly according to the following isola
 ---
 
 ## Phase 1: Local Infrastructure Setup & DB Bootstrapping
-*This phase creates a fully self-contained local development environment mirroring the target serverless setup.*
+**Status: ✅ COMPLETE**
 
-### Tasks
-1. **Docker Integration:** Author a `docker-compose.yml` defining an isolated PostgreSQL database instance configured for local execution.
-2. **Database Scaffolding:** Execute the baseline DDL schema detailed in `claude.md`.
-3. **Seeding Utility:** Create a local seed script introducing:
-   - System standard global exercises.
-   - 3 Test Roles: `trainer@test.local`, `user@test.local`, `free@test.local`.
-4. **Angular Framework Initiation:** Initialize a pristine standalone Angular TypeScript shell with Tailwind CSS and Spartan UI dependencies installed.
-
-### Autonomous Checklist for Claude
-- Run local database containers seamlessly.
-- Initialize database structural migrations.
-- Verify basic framework boilerplate compilation with zero linting or type configuration failures.
+### Delivered
+- Supabase CLI replaced docker-compose as the local runtime.
+- All DB schema, RLS policies, and seed data are in `supabase/migrations/` and `supabase/seed.sql`.
+- Angular 19 standalone scaffold compiled with zero errors.
+- Spartan UI primitives scaffolded: `hlm-button`, `hlm-badge`, `hlm-input`, `hlm-label`, `hlm-separator`.
 
 ---
 
 ## Phase 2: Core Authentication, Tenancy & Dynamic Theming Engine
-*Establishes the foundation of role enforcement and client dynamic branding rules.*
+**Status: ✅ COMPLETE**
 
-### Tasks
-1. **Supabase Client Core Integration:** Implement the client token handlers inside an Angular Service layer utilizing Angular Signals to track the active authenticated profile.
-2. **The Reactive Theme Engine Service:** Build out the absolute pure mathematical utility tracking Hex to HSL conversions. Write the DOM injector binding variables directly onto the application layout frame as native CSS custom properties.
-3. **Guarded Route Routing Infrastructure:** Construct strict functional structural Route Guards checking explicit profile access rights (`trainer`, `user`, `free`).
-4. **Multi-Tenant Global Configuration Module:** Architect an isolated branding component framework displaying inline SVGs safely using explicit Angular layout sanitization hooks (`DomSanitizer`).
-
-### Autonomous Checklist for Claude
-- Complete login, account creation, and role determination state routines.
-- Verify instant page layout adjustments (buttons, ambient focus shadows, and color-inverted textual contrasts) when changing a tenant's primary hex code configuration.
+### Delivered
+- `AuthService` (`core/auth/auth.service.ts`) — `onAuthStateChange` signal store, `signIn`, `signUp`, `signOut`, `loadProfile`, role-based redirect after login.
+- `ThemeService` (`core/theme/theme.service.ts`) — hex→HSL conversion and CSS custom property injection per the `claude.md` math spec.
+- `roleGuard` + `authGuard` (`core/guards/role.guard.ts`) — **async** (rewritten in Phase 5 Task 1); pipe `isLoading` via `toObservable`, eliminates hard-refresh race condition.
+- `TenantBrandingComponent` (`shared/components/tenant-branding/`) — safe SVG rendering via `DomSanitizer`.
+- `LoginComponent` (`features/auth/login/`) — email/password form with error display.
 
 ---
 
 ## Phase 3: Mobile Client Workspace (Home Tracking Flow)
-*Focuses purely on building out the high-density workout engine for mobile layouts.*
+**Status: ✅ COMPLETE (finalised in Phase 5 Task 2)**
 
-### Tasks
-1. **The Dynamic Workout Table Interface:** Construct a mobile view looping over structural prescription records.
-   - **Exigence Badges:** Assign strict visual mappings ($A$ = Rich Red, $D$ = Light Ice Blue).
-   - **Weight Recommendation Engine:** Integrate the structural Epley mathematical transformation rules ($1\text{RM}$) directly into state placeholder properties.
-2. **Adaptive Tracking Inputs Template Integration:** Map input presentation fields adaptively based on contextual configurations:
-   - `standard`: A singular collective entry form input.
-   - `granular`/`failure`: An array-mapped sequence of entry forms generated according to explicit set repetitions.
-3. **Inline Mutation Persistency Loop:** Design state handlers marking single rows as resolved (`is_completed = true`) on input changes.
-4. **Workout Finalization Workflow Engine:** Build a Spartan UI context drawer or dialog appearing when clicking the global "Complete Workout" button. Collect subjective scores from 1 to 5, write the complete dataset transaction to Supabase, and automatically increment the active tracking configuration state to the next consecutive relative day.
+### Originally Delivered (Phase 3)
+- All planning TypeScript types (`core/planning/planning.types.ts`): `Exercise`, `Planning`, `PlanningDay`, `PrescribedExercise`, `WorkoutSession`, `WorkoutLog`, plus enums `MuscleIntensity`, `TrackingMode`, `ExigenceLevel`.
+- DB migration `20260524000004_profiles_assigned_planning.sql` — `assigned_planning_id UUID` on `profiles`.
+- Seed: Push/Pull/Legs beginner block assigned to `user@test.local`.
+- `ClientShellComponent` — stub placeholder only; no workout logic.
 
-### Autonomous Checklist for Claude
-- Complete end-to-end execution testing of local gym plans via a simulated mobile interface shell.
-- Confirm automated placeholder calculations match expectations when modifying rep ranges.
-- Validate transaction handling when submitting missing field inputs (ensuring they auto-complete using suggested placeholders).
+### Completed in Phase 5 Task 2
+- `WorkoutService` (`core/workout/workout.service.ts`):
+  - `loadPlan(planningId)` — deep join: `plannings → planning_days → prescribed_exercises → exercises`.
+  - `loadLastSession(userId, planningId)` — resolves last completed session for day cycling.
+  - `loadLastLog(userId, exerciseId)` — fetches most recent completed log entry for Epley weight suggestion.
+  - `saveSession(...)` — atomic batch: one `workout_sessions` row + N `workout_logs` rows.
+  - `resolveActiveDay(lastSession, availableDays)` — cycles to next day, wraps back to first after last.
+  - `computeSuggestedWeight(log, targetReps, fallback)` — Epley formula, rounds to nearest 0.25 kg.
+- `WorkoutDashboardComponent` (`features/client/workout-dashboard/`):
+  - Loads `assigned_planning_id` from profile; shows empty-state card if null.
+  - `standard` mode: one shared weight + reps input applied to all rounds.
+  - `granular` / `failure` mode: per-round weight + reps input pairs.
+  - Exigence badges: A = red, B = orange, C = yellow, D = cyan.
+  - Mark-complete toggle per exercise row (signal-local until session close).
+  - "Finish Workout" bottom drawer with 1–5 star subjective score.
+  - On confirm: batch writes to DB, reloads component → auto-increments to next day.
 
 ---
 
 ## Phase 4: Desktop Administrative Workspace (Trainer Custom Dashboard)
-*Implements the complex structural planning tools designed for desktop workflows.*
+**Status: ✅ COMPLETE (finalised in Phase 5 Tasks 3–4)**
 
-### Tasks
-1. **Exercise Management Core Portal:** Build data input interfaces supporting comprehensive CRUD workflows on exercises.
-2. **Interactive Muscle Tagging Matrix Component:** Implement a drag-and-drop structural array management UI using Angular CDK Drag & Drop. Allow trainers to reorder targeted muscles, instantly mapping array index allocations to explicit tracking attributes (`primary`, `secondary`, `tertiary`).
-3. **The Matrix Training Planner Form Engine:** Construct the relative planning grid (Day 1 through Day 7 mapping). Provide user assignment selectors targeting explicit clients locked inside the administrative trainer's specific multi-tenant ID perimeter.
+### Originally Delivered (Phase 4)
+- `ExerciseService` (`core/exercises/exercise.service.ts`) — full CRUD with tenant scoping.
+- `PlanningService` (`core/planning/planning.service.ts`) — full CRUD: planning, days, prescribed exercise rows; user assignment (`assignPlanning`); tenant user loading.
+- `ExerciseListComponent` — tabular list of tenant + global exercises.
+- `ExerciseFormComponent` — create-only page at `/trainer/exercises/new` (edit was originally page-nav to `:id`, now replaced by sheet).
+- `MuscleTagMatrixComponent` — CDK drag-and-drop with intensity-colour assignment.
+- `PlanningListComponent` — tabular list with delete.
+- `PlanningFormComponent` — Day 1–7 accordion, CDK-sortable prescribed rows, user-assignment checkboxes.
+- `TrainerShellComponent` — was a full sidebar layout; **now a bare `<router-outlet>`** (layout moved to `AppShellComponent`).
 
-### Autonomous Checklist for Claude
-- Test drag-and-drop mechanics to confirm muscle priority array items adjust index orders smoothly.
-- Validate form constraints ensuring trainers cannot assign conflicting duplicate operations across the same training days.
-- Ensure cross-tenant data isolation holds true so distinct managers cannot see or modify outer tenant definitions.
+### Completed in Phase 5 Task 3 — Client Portal
+- DB migration `20260526000005_profiles_is_active.sql` — `is_active BOOLEAN DEFAULT TRUE NOT NULL` on `profiles`.
+- `HlmSheetComponent` (`shared/ui/sheet/`) — reusable slide-panel primitive (right or bottom side, backdrop, close button, title slot).
+- `ClientRosterComponent` (`features/trainer/clients/client-roster/`) — tabular active-client grid + collapsed inactive accordion. Resolves plan title from in-memory `PlanningService.plannings()`.
+- `ClientDetailSheetComponent` (`features/trainer/clients/client-detail-sheet/`) — plan reassignment `<select>` (calls `PlanningService.assignPlanning`) + `is_active` toggle (direct Supabase update).
+
+### Completed in Phase 5 Task 4 — Exercise Edit Sheet
+- `ExerciseEditSheetComponent` (`features/trainer/exercises/exercise-edit-sheet/`) — fields locked by default; "Modify Structural Definition" button unlocks them. Global exercises permanently read-only. Reuses `MuscleTagMatrixComponent`.
+- `ExerciseListComponent` — refactored: row click opens `ExerciseEditSheetComponent` instead of navigating. Global exercise rows also clickable (locked view).
+- Route `/trainer/exercises/:id` removed from `app.routes.ts`.
+
+---
+
+## Phase 5: Layout Consolidation, Multi-Role Shell, and Admin Expansion
+**Status: ✅ COMPLETE**
+
+### Task 1: Core Routing Infrastructure & Async Security Fix ✅
+
+**Delivered:**
+- `authGuard` + `roleGuard` rewritten as async observables (`core/guards/role.guard.ts`). Both pipe `AuthService.isLoading` via `toObservable`, filter until `false`, then evaluate profile. Eliminates hard-refresh race condition on all protected routes.
+- `AppShellComponent` (`features/shell/app-shell/`) — single universal layout wrapping all authenticated routes:
+  - Desktop (≥ `lg`): fixed left sidebar always visible.
+  - Mobile: top bar with hamburger; sidebar slides in as off-canvas drawer over a backdrop.
+  - Role-aware nav: `trainer` → Exercises / Training Plans / Clients / Profile; `user`/`free` → Today's Workout / Profile.
+  - Sign out button in sidebar footer.
+- `TrainerShellComponent` stripped to `<router-outlet>` only.
+- `app.routes.ts` final map:
+  ```
+  /login                         → LoginComponent (no guard)
+  /  (AppShellComponent, authGuard)
+    ''                           → redirect → /dashboard
+    /trainer  (roleGuard trainer, TrainerShellComponent)
+      ''                         → redirect → exercises
+      /exercises                 → ExerciseListComponent
+      /exercises/new             → ExerciseFormComponent
+      /planning                  → PlanningListComponent
+      /planning/new              → PlanningFormComponent
+      /planning/:id              → PlanningFormComponent
+      /clients                   → ClientRosterComponent
+    /dashboard  (roleGuard user|trainer|free)
+                                 → WorkoutDashboardComponent
+    /profile                     → ProfilePageComponent
+  **                             → redirect → /login
+  ```
+
+### Task 2: Workout Dashboard ✅
+See Phase 3 "Completed in Phase 5 Task 2" above.
+
+### Task 3: Client Portal ✅
+See Phase 4 "Completed in Phase 5 Task 3" above.
+
+### Task 4: Exercise Edit Sheet ✅
+See Phase 4 "Completed in Phase 5 Task 4" above.
+
+### Task 5: Profile Page ✅
+
+**Delivered:**
+- `ProfilePageComponent` (`features/profile/profile-page/`) — read-only card accessible at `/profile` by all roles:
+  - Name, Email, Role badge (colour-coded per role), Member since.
+  - Tenant name + hex colour swatch if `tenant_name` is set.
+  - No edit capability.

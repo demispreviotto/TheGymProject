@@ -6,14 +6,15 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## Current Development State
 
-**Active Phase:** Phase 5 — TBD (update this line when starting a new phase)
+**Active Phase:** All phases complete — application fully built.
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| 1 — Infrastructure | ✅ Done | Docker → Supabase CLI, SQL schema, seed data |
-| 2 — Angular Scaffold | ✅ Done | Auth, ThemeService, guards, shell components |
-| 3 — Spartan UI + Planning types | ✅ Done | Spartan primitives, planning TS types, schema migration |
-| 4 — Trainer Admin Dashboard | ✅ Done | Exercise CRUD, muscle matrix CDK, planning grid Day 1–7, user assignment |
+| 1 — Infrastructure | ✅ Done | Supabase CLI, SQL schema + RLS migrations, seed data |
+| 2 — Angular Scaffold | ✅ Done | Auth, ThemeService, async roleGuard/authGuard, LoginComponent |
+| 3 — Mobile Workout Engine | ✅ Done | WorkoutService + WorkoutDashboardComponent: Epley 1RM, adaptive inputs, session drawer |
+| 4 — Trainer Admin Dashboard | ✅ Done | Exercise & Planning CRUD, ExerciseEditSheetComponent, ClientRosterComponent + ClientDetailSheetComponent |
+| 5 — Shell, Workout Engine, Client Portal | ✅ Done | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -85,8 +86,10 @@ CREATE TABLE profiles (
   role user_role NOT NULL DEFAULT 'free',
   tenant_id UUID REFERENCES auth.users(id) NULL,
   tenant_name TEXT NULL,
-  tenant_logo_svg TEXT NULL, 
+  tenant_logo_svg TEXT NULL,
   tenant_primary_hex VARCHAR(7) DEFAULT '#EF4444' NOT NULL,
+  assigned_planning_id UUID REFERENCES plannings(id) NULL, -- migration 20260524000004
+  is_active BOOLEAN DEFAULT TRUE NOT NULL,                 -- migration 20260526000005
   created_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT chk_svg_size CHECK (octet_length(tenant_logo_svg) <= 65535)
 );
@@ -152,7 +155,65 @@ CREATE TABLE workout_logs (
 );
 ```
 
-## 4. Algorithmic Specifications
+## 4. Codebase File Map
+
+All source lives under `src/`. Angular app root is `src/app/`.
+
+### Migrations (`supabase/migrations/`)
+| File | What it adds |
+|------|-------------|
+| `20260524000001_enums.sql` | `user_role`, `muscle_intensity`, `tracking_mode` enums |
+| `20260524000002_tables.sql` | All core tables |
+| `20260524000003_rls.sql` | Row-Level Security policies |
+| `20260524000004_profiles_assigned_planning.sql` | `profiles.assigned_planning_id` |
+| `20260526000005_profiles_is_active.sql` | `profiles.is_active` |
+
+### Core (`src/core/`)
+| File | Purpose |
+|------|---------|
+| `auth/auth.types.ts` | `UserRole` type + `Profile` interface (full column set including `assigned_planning_id`, `is_active`) |
+| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` |
+| `guards/role.guard.ts` | `authGuard` (any authenticated user) + `roleGuard(roles[])` — both async via `toObservable(isLoading)` |
+| `supabase/supabase.client.ts` | `SUPABASE_CLIENT` InjectionToken |
+| `theme/theme.service.ts` | Hex→HSL conversion; injects `--tenant-*` CSS custom properties |
+| `exercises/exercise.service.ts` | `exercises` signal; `load`, `create`, `update`, `delete` |
+| `planning/planning.types.ts` | All domain types: `Exercise`, `Planning`, `PlanningDay`, `PrescribedExercise`, `WorkoutSession`, `WorkoutLog`, enums |
+| `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers` |
+| `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
+
+### Features (`src/features/`)
+| File | Route | Role |
+|------|-------|------|
+| `auth/login/login.component.ts` | `/login` | public |
+| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated |
+| `profile/profile-page/profile-page.component.ts` | `/profile` | all |
+| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer |
+| `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
+| `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
+| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer |
+| `trainer/exercises/exercise-form/exercise-form.component.ts` | `/trainer/exercises/new` | trainer |
+| `trainer/exercises/exercise-edit-sheet/exercise-edit-sheet.component.ts` | *(sheet, no route)* | trainer |
+| `trainer/exercises/muscle-tag-matrix/muscle-tag-matrix.component.ts` | *(sub-component)* | trainer |
+| `trainer/planning/planning-list/planning-list.component.ts` | `/trainer/planning` | trainer |
+| `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` | trainer |
+| `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
+| `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
+
+### Shared UI (`src/shared/`)
+| Export | File | Type |
+|--------|------|------|
+| `HlmButtonDirective` | `shared/ui/button/` | directive |
+| `HlmInputDirective` | `shared/ui/input/` | directive |
+| `HlmLabelDirective` | `shared/ui/label/` | directive |
+| `HlmBadgeDirective` | `shared/ui/badge/` | directive |
+| `HlmSeparatorComponent` | `shared/ui/separator/` | component |
+| `HlmSheetComponent` | `shared/ui/sheet/` | component — slide panel (right or bottom side) |
+| `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name |
+
+---
+
+## 5. Algorithmic Specifications
+
 ### Dynamic Theming Math (Runtime HSL Engine)
 The application dynamically reads a singular `tenant_primary_hex` at runtime, translates it into HSL space, and maps dynamic tokens on the container context:
 - `h, s, l` derived accurately from Hex.
