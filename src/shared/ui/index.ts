@@ -3,3 +3,4 @@ export { HlmInputDirective } from './input/hlm-input.directive';
 export { HlmLabelDirective } from './label/hlm-label.directive';
 export { HlmBadgeDirective } from './badge/hlm-badge.directive';
 export { HlmSeparatorComponent } from './separator/hlm-separator.component';
+export { HlmSheetComponent } from './sheet/hlm-sheet.component';
