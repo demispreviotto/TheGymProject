@@ -1,7 +1,13 @@
 import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkoutService, WorkoutPlanFull, WorkoutPrescribed, LogPayload } from '../../../core/workout/workout.service';
+import { PlanningService } from '../../../core/planning/planning.service';
+import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import type { ExigenceLevel } from '../../../core/planning/planning.types';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface RoundInput {
   weight: number | null;
@@ -19,6 +25,7 @@ interface WorkoutRowState {
   selector: 'app-workout-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, TranslatePipe],
   template: `
     <div class="max-w-lg mx-auto">
 
@@ -30,23 +37,47 @@ interface WorkoutRowState {
         </div>
 
       } @else if (!assignedPlanId()) {
-        <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <div class="flex flex-col items-center py-12 text-center gap-4">
           <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
             <svg class="w-8 h-8 text-neutral-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round"
                 d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
             </svg>
           </div>
-          <h2 class="text-lg font-semibold text-neutral-100">No plan assigned yet</h2>
-          <p class="text-sm text-neutral-400 max-w-[280px]">
-            Contact your trainer to get a personalised training plan assigned to your account.
-          </p>
+          <h2 class="text-lg font-semibold text-neutral-100">{{ 'dashboard.noplan.title' | translate }}</h2>
+          <p class="text-sm text-neutral-400 max-w-[280px]">{{ 'dashboard.noplan.body' | translate }}</p>
+        </div>
+
+        <!-- Plan ID connect -->
+        <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+          <div>
+            <p class="text-sm font-medium text-neutral-100">{{ 'dashboard.connect.title' | translate }}</p>
+            <p class="text-xs text-neutral-500 mt-0.5">{{ 'dashboard.connect.hint' | translate }}</p>
+          </div>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              [(ngModel)]="connectInput"
+              [placeholder]="'dashboard.connect.placeholder' | translate"
+              class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
+            />
+            <button
+              (click)="connectPlan()"
+              [attr.disabled]="connectLoading() ? '' : null"
+              class="px-4 py-2 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 whitespace-nowrap"
+            >
+              {{ connectLoading() ? ('dashboard.connect.connecting' | translate) : ('dashboard.connect.button' | translate) }}
+            </button>
+          </div>
+          @if (connectError()) {
+            <p class="text-xs text-red-400">{{ connectError()! | translate }}</p>
+          }
         </div>
 
       } @else if (rows().length > 0) {
         <div class="mb-5">
           <h1 class="text-xl font-bold text-neutral-100">{{ plan()?.title }}</h1>
-          <p class="text-sm text-neutral-500 mt-0.5">Day {{ activeDay() }}</p>
+          <p class="text-sm text-neutral-500 mt-0.5">{{ 'dashboard.day' | translate }} {{ activeDay() }}</p>
         </div>
 
         <div class="space-y-3">
@@ -71,7 +102,7 @@ interface WorkoutRowState {
 
               @if (row.suggestedWeight !== null) {
                 <p class="text-xs text-neutral-500 mb-3">
-                  Suggested: <span class="text-neutral-300 font-medium">{{ row.suggestedWeight }} kg</span>
+                  {{ 'dashboard.suggested' | translate }}: <span class="text-neutral-300 font-medium">{{ row.suggestedWeight }} kg</span>
                 </p>
               }
 
@@ -79,7 +110,7 @@ interface WorkoutRowState {
               @if (row.prescribed.tracking_mode === 'standard') {
                 <div class="flex gap-3">
                   <div class="flex-1">
-                    <label class="text-xs text-neutral-500 mb-1 block">Weight (kg)</label>
+                    <label class="text-xs text-neutral-500 mb-1 block">{{ 'dashboard.weight' | translate }}</label>
                     <input
                       type="number" min="0" step="0.5"
                       [value]="row.inputs[0].weight ?? ''"
@@ -90,7 +121,7 @@ interface WorkoutRowState {
                     />
                   </div>
                   <div class="flex-1">
-                    <label class="text-xs text-neutral-500 mb-1 block">Reps</label>
+                    <label class="text-xs text-neutral-500 mb-1 block">{{ 'dashboard.reps' | translate }}</label>
                     <input
                       type="number" min="0"
                       [value]="row.inputs[0].reps ?? ''"
@@ -107,7 +138,7 @@ interface WorkoutRowState {
                 <div class="space-y-2">
                   @for (input of row.inputs; track $index; let r = $index) {
                     <div class="flex items-center gap-2">
-                      <span class="text-xs text-neutral-500 w-16 flex-shrink-0">Round {{ r + 1 }}</span>
+                      <span class="text-xs text-neutral-500 w-16 flex-shrink-0">{{ 'dashboard.round' | translate }} {{ r + 1 }}</span>
                       <input
                         type="number" min="0" step="0.5"
                         [value]="input.weight ?? ''"
@@ -137,7 +168,7 @@ interface WorkoutRowState {
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
-                {{ row.isCompleted ? 'Completed' : 'Mark complete' }}
+                {{ row.isCompleted ? ('dashboard.completed' | translate) : ('dashboard.complete' | translate) }}
               </button>
             </div>
           }
@@ -148,7 +179,7 @@ interface WorkoutRowState {
             (click)="openFinish()"
             class="w-full py-3 rounded-xl bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] font-semibold text-sm hover:opacity-90 transition-opacity"
           >
-            Finish Workout
+            {{ 'dashboard.finish' | translate }}
           </button>
         </div>
 
@@ -164,8 +195,8 @@ interface WorkoutRowState {
       <div class="fixed inset-0 z-50 bg-black/60" (click)="closeFinish()"></div>
       <div class="fixed inset-x-0 bottom-0 z-50 bg-neutral-900 border-t border-neutral-800 rounded-t-2xl px-6 pt-5 pb-10">
         <div class="w-10 h-1 bg-neutral-700 rounded-full mx-auto mb-6"></div>
-        <h2 class="text-lg font-bold text-neutral-100 mb-1">Finish Workout</h2>
-        <p class="text-sm text-neutral-400 mb-6">How did this session feel?</p>
+        <h2 class="text-lg font-bold text-neutral-100 mb-1">{{ 'dashboard.session.finish' | translate }}</h2>
+        <p class="text-sm text-neutral-400 mb-6">{{ 'dashboard.session.how' | translate }}</p>
 
         <div class="flex justify-center gap-2 mb-8">
           @for (star of stars; track star) {
@@ -198,7 +229,7 @@ interface WorkoutRowState {
             [attr.disabled]="(subjectiveScore() === 0 || saving()) ? '' : null"
             class="flex-1 py-3 rounded-xl bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
           >
-            {{ saving() ? 'Saving…' : 'Confirm' }}
+            {{ saving() ? ('common.saving' | translate) : ('common.confirm' | translate) }}
           </button>
         </div>
       </div>
@@ -208,6 +239,8 @@ interface WorkoutRowState {
 export class WorkoutDashboardComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly workoutService = inject(WorkoutService);
+  private readonly planningService = inject(PlanningService);
+  private readonly supabase = inject(SUPABASE_CLIENT);
 
   readonly loading = signal(true);
   readonly plan = signal<WorkoutPlanFull | null>(null);
@@ -222,6 +255,11 @@ export class WorkoutDashboardComponent implements OnInit {
 
   readonly skeletons = [1, 2, 3];
   readonly stars = [1, 2, 3, 4, 5];
+
+  // Plan connect
+  connectInput = '';
+  readonly connectLoading = signal(false);
+  readonly connectError = signal<string | null>(null);
 
   async ngOnInit(): Promise<void> {
     await this.loadWorkout();
@@ -334,6 +372,33 @@ export class WorkoutDashboardComponent implements OnInit {
     }
 
     this.finishDrawerOpen.set(false);
+    await this.loadWorkout();
+  }
+
+  async connectPlan(): Promise<void> {
+    this.connectError.set(null);
+    const id = this.connectInput.trim();
+    if (!UUID_RE.test(id)) {
+      this.connectError.set('dashboard.connect.err.format');
+      return;
+    }
+    this.connectLoading.set(true);
+    const plan = await this.planningService.lookupSharedPlan(id);
+    if (!plan) {
+      this.connectError.set('dashboard.connect.err.notfound');
+      this.connectLoading.set(false);
+      return;
+    }
+    const userId = this.auth.profile()?.id;
+    if (userId) {
+      await this.supabase
+        .from('profiles')
+        .update({ assigned_planning_id: plan.id })
+        .eq('id', userId);
+      this.auth.profile.update(p => p ? { ...p, assigned_planning_id: plan.id } : p);
+    }
+    this.connectInput = '';
+    this.connectLoading.set(false);
     await this.loadWorkout();
   }
 

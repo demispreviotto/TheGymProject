@@ -22,6 +22,7 @@ export interface Planning {
   tenant_id: string;
   title: string;
   use_auto_1rm: boolean;
+  is_shared_with_gym: boolean;
   created_at: string;
 }
 

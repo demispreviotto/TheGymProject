@@ -2,16 +2,24 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { ThemeService } from '../theme/theme.service';
-import type { Profile } from './auth.types';
+import { LanguageService } from '../i18n/language.service';
+import type { Profile, Tenant } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly router = inject(Router);
   private readonly theme = inject(ThemeService);
+  private readonly lang = inject(LanguageService);
 
   readonly profile = signal<Profile | null>(null);
+  readonly tenant = signal<Tenant | null>(null);
   readonly isLoading = signal(true);
+
+  patchTenant(patch: Partial<Tenant>): void {
+    const current = this.tenant();
+    if (current) this.tenant.set({ ...current, ...patch });
+  }
 
   initialize(): void {
     this.supabase.auth.onAuthStateChange((_event, session) => {
@@ -19,6 +27,7 @@ export class AuthService {
         this.loadProfile(session.user.id);
       } else {
         this.profile.set(null);
+        this.tenant.set(null);
         this.isLoading.set(false);
       }
     });
@@ -43,20 +52,24 @@ export class AuthService {
   async signOut(): Promise<void> {
     await this.supabase.auth.signOut();
     this.profile.set(null);
+    this.tenant.set(null);
     this.router.navigate(['/login']);
   }
 
   private async loadProfile(userId: string): Promise<void> {
     const { data } = await this.supabase
       .from('profiles')
-      .select('*')
+      .select('*, tenant:tenants!tenant_ref_id(*)')
       .eq('id', userId)
       .single();
 
     if (data) {
-      this.profile.set(data as Profile);
-      this.theme.applyFromProfile(data as Profile);
-      this.redirectByRole((data as Profile).role);
+      const { tenant, ...profileData } = data as { tenant: Tenant | null } & Profile;
+      this.profile.set(profileData);
+      this.tenant.set(tenant ?? null);
+      this.theme.applyFromTenant(tenant ?? null);
+      this.lang.initFromProfile(profileData);
+      this.redirectByRole(profileData.role);
     }
     this.isLoading.set(false);
   }

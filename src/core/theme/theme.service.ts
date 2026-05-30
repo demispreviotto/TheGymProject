@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import type { Profile } from '../auth/auth.types';
+import type { Tenant } from '../auth/auth.types';
 
 interface Hsl {
   h: number;
@@ -12,8 +12,8 @@ interface Hsl {
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
 
-  applyFromProfile(profile: Profile): void {
-    this.applyHex(profile.tenant_primary_hex ?? '#EF4444');
+  applyFromTenant(tenant: Tenant | null): void {
+    this.applyHex(tenant?.primary_hex ?? '#EF4444');
   }
 
   applyHex(hex: string): void {
