@@ -1,28 +1,24 @@
 import {
-  Component,
-  inject,
-  signal,
-  computed,
-  OnInit,
-  ChangeDetectionStrategy,
+  Component, inject, signal, computed, OnInit, ChangeDetectionStrategy,
 } from '@angular/core';
 import { PlanningService } from '../../../../core/planning/planning.service';
 import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ClientDetailSheetComponent } from '../client-detail-sheet/client-detail-sheet.component';
+import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import type { Profile } from '../../../../core/auth/auth.types';
 
 @Component({
   selector: 'app-client-roster',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClientDetailSheetComponent],
+  imports: [ClientDetailSheetComponent, TranslatePipe],
   template: `
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-xl font-bold text-neutral-100">Clients</h1>
-          <p class="text-sm text-neutral-500 mt-0.5">{{ activeClients().length }} active</p>
+          <h1 class="text-xl font-bold text-neutral-100">{{ 'clients.title' | translate }}</h1>
+          <p class="text-sm text-neutral-500 mt-0.5">{{ activeClients().length }} {{ 'clients.active' | translate }}</p>
         </div>
       </div>
 
@@ -34,37 +30,30 @@ import type { Profile } from '../../../../core/auth/auth.types';
         </div>
       } @else {
 
-        <!-- Active clients table -->
         @if (activeClients().length > 0) {
           <div class="rounded-xl border border-neutral-800 overflow-hidden mb-4">
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-neutral-800 bg-neutral-900">
-                  <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Client</th>
-                  <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden sm:table-cell">Plan</th>
-                  <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden md:table-cell">Joined</th>
-                  <th class="px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide text-right">Status</th>
+                  <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ 'clients.title' | translate }}</th>
+                  <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden sm:table-cell">{{ 'clients.col.plan' | translate }}</th>
+                  <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden md:table-cell">{{ 'clients.col.joined' | translate }}</th>
+                  <th class="px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide text-right">{{ 'clients.col.status' | translate }}</th>
                 </tr>
               </thead>
               <tbody>
                 @for (client of activeClients(); track client.id) {
-                  <tr
-                    class="border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
-                    (click)="openSheet(client)"
-                  >
+                  <tr class="border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
+                      (click)="openSheet(client)">
                     <td class="px-4 py-3">
                       <p class="font-medium text-neutral-100">{{ client.name }}</p>
                       <p class="text-xs text-neutral-500">{{ client.email }}</p>
                     </td>
-                    <td class="px-4 py-3 text-neutral-400 hidden sm:table-cell">
-                      {{ planTitle(client.assigned_planning_id) }}
-                    </td>
-                    <td class="px-4 py-3 text-neutral-400 hidden md:table-cell">
-                      {{ formatDate(client.created_at) }}
-                    </td>
+                    <td class="px-4 py-3 text-neutral-400 hidden sm:table-cell">{{ planTitle(client.assigned_planning_id) }}</td>
+                    <td class="px-4 py-3 text-neutral-400 hidden md:table-cell">{{ formatDate(client.created_at) }}</td>
                     <td class="px-4 py-3 text-right">
                       <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-                        Active
+                        {{ 'common.active' | translate }}
                       </span>
                     </td>
                   </tr>
@@ -73,39 +62,32 @@ import type { Profile } from '../../../../core/auth/auth.types';
             </table>
           </div>
         } @else {
-          <p class="text-sm text-neutral-500 mb-4">No active clients yet.</p>
+          <p class="text-sm text-neutral-500 mb-4">{{ 'clients.empty' | translate }}</p>
         }
 
-        <!-- Inactive clients accordion -->
         @if (inactiveClients().length > 0) {
           <div class="rounded-xl border border-neutral-800 overflow-hidden">
             <button
               (click)="toggleInactive()"
               class="w-full flex items-center justify-between px-4 py-3 text-sm text-neutral-400 hover:bg-neutral-800/50 transition-colors"
             >
-              <span>Inactive clients ({{ inactiveClients().length }})</span>
-              <svg
-                class="w-4 h-4 transition-transform"
-                [class.rotate-180]="inactiveExpanded()"
-                fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"
-              >
+              <span>{{ 'clients.inactive' | translate }} ({{ inactiveClients().length }})</span>
+              <svg class="w-4 h-4 transition-transform" [class.rotate-180]="inactiveExpanded()"
+                   fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
               </svg>
             </button>
-
             @if (inactiveExpanded()) {
               <div class="border-t border-neutral-800">
                 @for (client of inactiveClients(); track client.id) {
-                  <div
-                    class="flex items-center justify-between px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
-                    (click)="openSheet(client)"
-                  >
+                  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
+                       (click)="openSheet(client)">
                     <div>
                       <p class="text-sm font-medium text-neutral-400">{{ client.name }}</p>
                       <p class="text-xs text-neutral-600">{{ client.email }}</p>
                     </div>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-500">
-                      Inactive
+                      {{ 'common.inactive' | translate }}
                     </span>
                   </div>
                 }
@@ -113,11 +95,9 @@ import type { Profile } from '../../../../core/auth/auth.types';
             }
           </div>
         }
-
       }
     </div>
 
-    <!-- Client detail sheet -->
     <app-client-detail-sheet
       [client]="selectedClient()"
       (closed)="closeSheet()"
@@ -151,21 +131,10 @@ export class ClientRosterComponent implements OnInit {
     return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  toggleInactive(): void {
-    this.inactiveExpanded.update(v => !v);
-  }
-
-  openSheet(client: Profile): void {
-    this.selectedClient.set(client);
-  }
-
-  closeSheet(): void {
-    this.selectedClient.set(null);
-  }
-
-  async onClientUpdated(): Promise<void> {
-    await this.loadClients();
-  }
+  toggleInactive(): void { this.inactiveExpanded.update(v => !v); }
+  openSheet(client: Profile): void { this.selectedClient.set(client); }
+  closeSheet(): void { this.selectedClient.set(null); }
+  async onClientUpdated(): Promise<void> { await this.loadClients(); }
 
   private async loadClients(): Promise<void> {
     this.loading.set(true);
@@ -173,8 +142,8 @@ export class ClientRosterComponent implements OnInit {
     const { data } = await this.supabase
       .from('profiles')
       .select('*')
-      .eq('tenant_id', tenantId)
-      .neq('id', tenantId)   // exclude the trainer from their own roster
+      .eq('tenant_id', this.auth.tenant()?.id ?? tenantId)
+      .neq('id', tenantId)
       .order('name');
     this.clients.set((data as Profile[]) ?? []);
     this.loading.set(false);

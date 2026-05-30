@@ -126,6 +126,29 @@ export class PlanningService {
     return error?.message ?? null;
   }
 
+  async setShared(planId: string, value: boolean): Promise<string | null> {
+    const { error } = await this.supabase
+      .from('plannings')
+      .update({ is_shared_with_gym: value })
+      .eq('id', planId);
+    if (!error) {
+      this.plannings.update(list =>
+        list.map(p => p.id === planId ? { ...p, is_shared_with_gym: value } : p),
+      );
+    }
+    return error?.message ?? null;
+  }
+
+  async lookupSharedPlan(planId: string): Promise<Planning | null> {
+    const { data } = await this.supabase
+      .from('plannings')
+      .select('*')
+      .eq('id', planId)
+      .eq('is_shared_with_gym', true)
+      .maybeSingle();
+    return (data as Planning) ?? null;
+  }
+
   private async saveDays(planningId: string, days: PlanningDayPayload[]): Promise<string | null> {
     for (const day of days) {
       if (day.exercises.length === 0) continue;

@@ -15,6 +15,7 @@ DECLARE
   trainer_id UUID := '00000000-0000-0000-0000-000000000001';
   client_id  UUID := '00000000-0000-0000-0000-000000000002';
   free_id    UUID := '00000000-0000-0000-0000-000000000003';
+  gym_tenant_id  UUID := 'cccccccc-0000-0000-0000-000000000001';
 BEGIN
 
   -- -------------------------------------------------------------------------
@@ -92,12 +93,28 @@ BEGIN
   -- The on_auth_user_created trigger creates a 'free' profile on INSERT above.
   -- We patch roles and tenant relationships here.
   -- -------------------------------------------------------------------------
+
+  -- Create the gym tenant for the trainer
+  INSERT INTO public.tenants (id, owner_id, name, primary_hex)
+  VALUES (gym_tenant_id, trainer_id, 'Test Gym', '#EF4444')
+  ON CONFLICT (id) DO NOTHING;
+
+  -- tenant_id keeps pointing to the trainer's user ID (preserves existing RLS policies)
+  -- tenant_ref_id points to the new tenants table row
   UPDATE public.profiles
-  SET role = 'trainer', tenant_id = trainer_id, tenant_name = 'Test Gym', tenant_primary_hex = '#EF4444'
+  SET role = 'trainer',
+      tenant_id = trainer_id,
+      tenant_ref_id = gym_tenant_id,
+      tenant_name = 'Test Gym',
+      tenant_primary_hex = '#EF4444'
   WHERE id = trainer_id;
 
   UPDATE public.profiles
-  SET role = 'user', tenant_id = trainer_id, tenant_name = 'Test Gym', tenant_primary_hex = '#EF4444'
+  SET role = 'user',
+      tenant_id = trainer_id,
+      tenant_ref_id = gym_tenant_id,
+      tenant_name = 'Test Gym',
+      tenant_primary_hex = '#EF4444'
   WHERE id = client_id;
 
   -- free user stays with default role = 'free', no tenant.

@@ -21,10 +21,10 @@ export class TenantBrandingComponent {
   private readonly auth = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
 
-  readonly tenantName = computed(() => this.auth.profile()?.tenant_name ?? null);
+  readonly tenantName = computed(() => this.auth.tenant()?.name ?? null);
 
   readonly safeSvg = computed((): SafeHtml | null => {
-    const svg = this.auth.profile()?.tenant_logo_svg;
+    const svg = this.auth.tenant()?.logo_svg;
     if (!svg) return null;
     return this.sanitizer.bypassSecurityTrustHtml(svg);
   });

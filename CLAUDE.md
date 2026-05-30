@@ -6,7 +6,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## Current Development State
 
-**Active Phase:** All phases complete — application fully built.
+**Active Phase:** Phases 1–6 complete. Phase 7 (Corporate Gym tier) is conceptual/unscheduled.
 
 | Phase | Status | Summary |
 |-------|--------|---------|
@@ -15,6 +15,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 | 3 — Mobile Workout Engine | ✅ Done | WorkoutService + WorkoutDashboardComponent: Epley 1RM, adaptive inputs, session drawer |
 | 4 — Trainer Admin Dashboard | ✅ Done | Exercise & Planning CRUD, ExerciseEditSheetComponent, ClientRosterComponent + ClientDetailSheetComponent |
 | 5 — Shell, Workout Engine, Client Portal | ✅ Done | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
+| 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -155,6 +156,37 @@ CREATE TABLE workout_logs (
 );
 ```
 
+### Phase 6 Schema (migration 20260530000006_phase6_schema.sql — ✅ applied)
+
+```sql
+-- NEW TABLE: isolates gym/team branding from auth.users
+CREATE TABLE public.tenants (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name        TEXT NOT NULL,
+  logo_svg    TEXT,
+  primary_hex VARCHAR(7) DEFAULT '#EF4444' NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- PROFILES additions (expand only — existing columns preserved)
+ALTER TABLE public.profiles
+  ADD COLUMN tenant_ref_id       UUID REFERENCES public.tenants(id),    -- branding FK to tenants
+  ADD COLUMN preferred_language  VARCHAR(2) DEFAULT 'en' NOT NULL,      -- i18n: 'en' | 'es'
+  ADD COLUMN assigned_trainer_id UUID REFERENCES public.profiles(id);   -- direct trainer link (Phase 7+)
+
+-- NOTE: profiles.tenant_id still references auth.users(id) (trainer's user ID).
+-- All existing RLS policies that compare tenant_id = auth.uid() remain valid.
+-- The contract step (drop tenant_id, rename tenant_ref_id → tenant_id, rewrite RLS)
+-- is deferred until Phase 7 once all code paths use tenant_ref_id.
+
+-- PLANNINGS addition
+ALTER TABLE public.plannings
+  ADD COLUMN is_shared_with_gym BOOLEAN DEFAULT FALSE NOT NULL; -- enables protocol link sharing
+```
+
+---
+
 ## 4. Codebase File Map
 
 All source lives under `src/`. Angular app root is `src/app/`.
@@ -167,6 +199,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260524000003_rls.sql` | Row-Level Security policies |
 | `20260524000004_profiles_assigned_planning.sql` | `profiles.assigned_planning_id` |
 | `20260526000005_profiles_is_active.sql` | `profiles.is_active` |
+| `20260530000006_phase6_schema.sql` | `tenants` table; `profiles.tenant_ref_id`, `preferred_language`, `assigned_trainer_id`; `plannings.is_shared_with_gym` |
 
 ### Core (`src/core/`)
 | File | Purpose |
@@ -178,7 +211,10 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `theme/theme.service.ts` | Hex→HSL conversion; injects `--tenant-*` CSS custom properties |
 | `exercises/exercise.service.ts` | `exercises` signal; `load`, `create`, `update`, `delete` |
 | `planning/planning.types.ts` | All domain types: `Exercise`, `Planning`, `PlanningDay`, `PrescribedExercise`, `WorkoutSession`, `WorkoutLog`, enums |
-| `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers` |
+| `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers`, `setShared`, `lookupSharedPlan` |
+| `i18n/i18n.dictionary.ts` | Full EN/ES translation dictionary (70+ keys); `translate(key, lang)` pure function |
+| `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |
+| `tenant/tenant.service.ts` | `tenant` computed from `AuthService`; `update(patch)` — DB write + live theme propagation |
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
 
 ### Features (`src/features/`)
@@ -208,7 +244,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `HlmBadgeDirective` | `shared/ui/badge/` | directive |
 | `HlmSeparatorComponent` | `shared/ui/separator/` | component |
 | `HlmSheetComponent` | `shared/ui/sheet/` | component — slide panel (right or bottom side) |
-| `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name |
+| `TranslatePipe` | `shared/pipes/translate.pipe.ts` | impure pipe — `\| translate` resolves key via `LanguageService` |
+| `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name (reads from `auth.tenant()`) |
 
 ---
 
