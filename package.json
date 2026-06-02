@@ -44,7 +44,7 @@
     "typescript": "~5.5.0"
   },
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "packageManager": "pnpm@9.15.4"
 }
