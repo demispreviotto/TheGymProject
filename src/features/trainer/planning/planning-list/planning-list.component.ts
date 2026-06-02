@@ -59,12 +59,14 @@ import type { Planning } from '../../../../core/planning/planning.types';
                   <button
                     (click)="router.navigate(['/trainer/planning', plan.id])"
                     class="text-xs text-neutral-400 hover:text-neutral-100 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
+                  [title]="'common.edit' | translate"
                   >
-                    {{ 'common.edit' | translate }}
+                  {{ 'common.edit' | translate }}
                   </button>
                   <button
-                    (click)="confirmDelete(plan)"
-                    class="text-xs text-neutral-400 hover:text-red-400 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
+                  (click)="confirmDelete(plan)"
+                  class="text-xs text-neutral-400 hover:text-red-400 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
+                  [title]="'common.delete' | translate"
                   >
                     {{ 'common.delete' | translate }}
                   </button>

@@ -9,10 +9,10 @@ import { AuthService } from '../../../core/auth/auth.service';
   template: `
     <div class="flex items-center gap-2">
       @if (safeSvg()) {
-        <span class="h-7 w-7 flex-shrink-0" [innerHTML]="safeSvg()"></span>
+        <span class="h-7 w-7 flex-shrink-0 bg-[hsl(var(--tenant-primary))] rounded-[18%] p-1" [innerHTML]="safeSvg()"></span>
       }
       @if (tenantName()) {
-        <span class="text-sm font-semibold text-neutral-100">{{ tenantName() }}</span>
+        <span class="text-sm font-semibold text-neutral-100 bg-[[hsl(var(--tenant-primary))] rounded-[18%] p-1">{{ tenantName() }}</span>
       }
     </div>
   `,
