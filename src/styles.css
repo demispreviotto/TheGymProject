@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+svg {
+  fill: #ffffff70
+}
+
 @layer base {
   :root {
     /* Spartan UI / shadcn tokens — dark theme */
@@ -26,10 +30,10 @@
     --ring: 0 0% 83.1%;
     --radius: 0.5rem;
     /* Default tenant token values — overwritten at runtime by ThemeService */
-    --tenant-primary:   0 84% 60%;
-    --tenant-hover:     0 84% 50%;
+    --tenant-primary: 0 84% 60%;
+    --tenant-hover: 0 84% 50%;
     --tenant-highlight: 0 84% 100%;
-    --tenant-shadow:    0 84% 30%;
-    --tenant-contrast:  0 0% 100%;
+    --tenant-shadow: 0 84% 30%;
+    --tenant-contrast: 0 0% 100%;
   }
 }
