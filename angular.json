@@ -24,7 +24,7 @@
             "outputPath": "dist/the-gym-project",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": ["zone.js"],
+            "polyfills": ["src/process-polyfill.ts", "zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [{ "glob": "**/*", "input": "public" }],
             "styles": ["src/styles.css"],
