@@ -26,7 +26,7 @@
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "define": {
-              "process.env": "{\"NODE_ENV\":\"production\"}"
+              "process.env.NODE_ENV": "\"production\""
             },
             "tsConfig": "tsconfig.app.json",
             "assets": [{ "glob": "**/*", "input": "public" }],
