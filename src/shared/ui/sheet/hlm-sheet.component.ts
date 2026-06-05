@@ -5,11 +5,13 @@ import {
   computed,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { AppIconComponent } from '../icons/app-icon.component';
 
 @Component({
   selector: 'hlm-sheet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [AppIconComponent],
   template: `
     @if (open()) {
       <!-- Backdrop -->
@@ -28,9 +30,7 @@ import {
             class="p-1 rounded-md text-neutral-400 hover:text-neutral-100 transition-colors"
             aria-label="Close"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
+            <app-icon name="x-mark" iconClass="w-5 h-5" />
           </button>
         </div>
 

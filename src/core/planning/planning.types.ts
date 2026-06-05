@@ -23,6 +23,7 @@ export interface Planning {
   title: string;
   use_auto_1rm: boolean;
   is_shared_with_gym: boolean;
+  is_shared_with_friends: boolean;
   created_at: string;
 }
 

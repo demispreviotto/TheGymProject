@@ -16,6 +16,7 @@ import {
   PrescribedExercisePayload,
 } from '../../../../core/planning/planning.service';
 import { ExerciseService } from '../../../../core/exercises/exercise.service';
+import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import type { ExigenceLevel, TrackingMode } from '../../../../core/planning/planning.types';
 import type { Profile } from '../../../../core/auth/auth.types';
 
@@ -69,7 +70,7 @@ function emptyDays(): DayForm[] {
   selector: 'app-planning-form',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgClass, CdkDropList, CdkDrag],
+  imports: [FormsModule, NgClass, CdkDropList, CdkDrag, AppIconComponent],
   template: `
     <div class="max-w-4xl space-y-6">
 
@@ -120,11 +121,8 @@ function emptyDays(): DayForm[] {
                     <span class="text-xs text-neutral-500">{{ day.exercises.length }} exercise{{ day.exercises.length > 1 ? 's' : '' }}</span>
                   }
                 </div>
-                <svg class="w-4 h-4 text-neutral-500 transition-transform"
-                  [class.rotate-180]="day.open"
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
+                <app-icon name="chevron-down"
+                  [iconClass]="'w-4 h-4 text-neutral-500 transition-transform' + (day.open ? ' rotate-180' : '')" />
               </button>
 
               @if (day.open) {
@@ -143,19 +141,14 @@ function emptyDays(): DayForm[] {
 
                         <!-- Row header -->
                         <div class="flex items-center gap-2">
-                          <svg cdkDragHandle
-                            class="w-4 h-4 text-neutral-700 cursor-grab active:cursor-grabbing flex-shrink-0"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
-                          </svg>
+                          <app-icon cdkDragHandle name="drag-handle"
+                            iconClass="w-4 h-4 text-neutral-700 cursor-grab active:cursor-grabbing flex-shrink-0" />
                           <span class="text-xs text-neutral-500 font-mono">
                             #{{ ri + 1 }}
                           </span>
                           <button type="button" (click)="removeRow(day, ri)"
                             class="ml-auto text-neutral-600 hover:text-red-400 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <app-icon name="x-mark" />
                           </button>
                         </div>
 

@@ -8,6 +8,11 @@ export const routes: Routes = [
       import('../features/auth/login/login.component').then(m => m.LoginComponent),
   },
   {
+    path: 'register',
+    loadComponent: () =>
+      import('../features/auth/register/register.component').then(m => m.RegisterComponent),
+  },
+  {
     path: '',
     loadComponent: () =>
       import('../features/shell/app-shell/app-shell.component').then(m => m.AppShellComponent),
@@ -74,6 +79,84 @@ export const routes: Routes = [
           import('../features/client/workout-dashboard/workout-dashboard.component').then(
             m => m.WorkoutDashboardComponent,
           ),
+      },
+      {
+        path: 'admin',
+        canActivate: [roleGuard(['admin'])],
+        loadComponent: () =>
+          import('../features/admin/admin-shell/admin-shell.component').then(
+            m => m.AdminShellComponent,
+          ),
+        children: [
+          { path: '', redirectTo: 'requests', pathMatch: 'full' },
+          {
+            path: 'requests',
+            loadComponent: () =>
+              import(
+                '../features/admin/invite-requests/admin-invite-requests.component'
+              ).then(m => m.AdminInviteRequestsComponent),
+          },
+          {
+            path: 'users',
+            loadComponent: () =>
+              import('../features/admin/users/admin-users.component').then(
+                m => m.AdminUsersComponent,
+              ),
+          },
+        ],
+      },
+      {
+        path: 'my-plan',
+        canActivate: [roleGuard(['free', 'admin'])],
+        loadComponent: () =>
+          import('../features/free/my-plan-shell/my-plan-shell.component').then(
+            m => m.MyPlanShellComponent,
+          ),
+        children: [
+          { path: '', redirectTo: 'planning', pathMatch: 'full' },
+          {
+            path: 'planning',
+            loadComponent: () =>
+              import('../features/free/my-planning-list/my-planning-list.component').then(
+                m => m.MyPlanningListComponent,
+              ),
+          },
+          {
+            path: 'planning/new',
+            loadComponent: () =>
+              import(
+                '../features/trainer/planning/planning-form/planning-form.component'
+              ).then(m => m.PlanningFormComponent),
+          },
+          {
+            path: 'planning/:id',
+            loadComponent: () =>
+              import(
+                '../features/trainer/planning/planning-form/planning-form.component'
+              ).then(m => m.PlanningFormComponent),
+          },
+          {
+            path: 'exercises',
+            loadComponent: () =>
+              import('../features/free/my-exercise-list/my-exercise-list.component').then(
+                m => m.MyExerciseListComponent,
+              ),
+          },
+          {
+            path: 'exercises/new',
+            loadComponent: () =>
+              import(
+                '../features/trainer/exercises/exercise-form/exercise-form.component'
+              ).then(m => m.ExerciseFormComponent),
+          },
+          {
+            path: 'friends',
+            loadComponent: () =>
+              import('../features/free/my-friends/my-friends.component').then(
+                m => m.MyFriendsComponent,
+              ),
+          },
+        ],
       },
       {
         path: 'profile',

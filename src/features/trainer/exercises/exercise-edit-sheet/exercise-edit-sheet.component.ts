@@ -13,13 +13,14 @@ import { FormsModule } from '@angular/forms';
 import { ExerciseService, ExercisePayload } from '../../../../core/exercises/exercise.service';
 import { MuscleTagMatrixComponent } from '../muscle-tag-matrix/muscle-tag-matrix.component';
 import { HlmSheetComponent } from '../../../../shared/ui/sheet/hlm-sheet.component';
+import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import type { Exercise, MuscleGroup } from '../../../../core/planning/planning.types';
 
 @Component({
   selector: 'app-exercise-edit-sheet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MuscleTagMatrixComponent, HlmSheetComponent],
+  imports: [FormsModule, MuscleTagMatrixComponent, HlmSheetComponent, AppIconComponent],
   template: `
     <hlm-sheet [open]="!!exercise()" [title]="exercise()?.name ?? ''" (closed)="onClose()">
       @if (exercise(); as ex) {
@@ -27,10 +28,7 @@ import type { Exercise, MuscleGroup } from '../../../../core/planning/planning.t
 
           @if (isGlobal()) {
             <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700">
-              <svg class="w-4 h-4 text-neutral-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
+              <app-icon name="lock-closed" iconClass="w-4 h-4 text-neutral-500 flex-shrink-0" />
               <span class="text-xs text-neutral-500">Global exercises are read-only.</span>
             </div>
           } @else if (!unlocked()) {
@@ -38,10 +36,7 @@ import type { Exercise, MuscleGroup } from '../../../../core/planning/planning.t
               (click)="unlocked.set(true)"
               class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-sm text-neutral-400 hover:border-neutral-500 hover:text-neutral-100 transition-colors"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M13.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
+              <app-icon name="lock-open" />
               Modify Structural Definition
             </button>
           }

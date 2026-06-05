@@ -5,14 +5,16 @@ import { PlanningService } from '../../../../core/planning/planning.service';
 import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ClientDetailSheetComponent } from '../client-detail-sheet/client-detail-sheet.component';
+import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
+import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import type { Profile } from '../../../../core/auth/auth.types';
 
 @Component({
   selector: 'app-client-roster',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClientDetailSheetComponent, TranslatePipe],
+  imports: [ClientDetailSheetComponent, TranslatePipe, FormsModule, AppIconComponent],
   template: `
     <div>
       <div class="flex items-center justify-between mb-6">
@@ -20,7 +22,42 @@ import type { Profile } from '../../../../core/auth/auth.types';
           <h1 class="text-xl font-bold text-neutral-100">{{ 'clients.title' | translate }}</h1>
           <p class="text-sm text-neutral-500 mt-0.5">{{ activeClients().length }} {{ 'clients.active' | translate }}</p>
         </div>
+        <button (click)="toggleInviteForm()"
+          class="inline-flex items-center gap-1.5 rounded-md bg-[hsl(var(--tenant-primary))] px-3 py-1.5 text-sm font-medium
+                 text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))] transition-colors">
+          <app-icon name="user-plus" />
+          {{ 'invite.button' | translate }}
+        </button>
       </div>
+
+      @if (inviteFormOpen()) {
+        <div class="rounded-xl border border-neutral-800 bg-neutral-900 p-4 mb-6 space-y-3">
+          <p class="text-sm font-medium text-neutral-300">{{ 'invite.email' | translate }}</p>
+          <div class="flex gap-2">
+            <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
+              (keydown.enter)="sendInvite()"
+              class="flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
+                     text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
+                     focus:outline-none focus:ring-1 focus:ring-[hsl(var(--tenant-primary))]"
+              placeholder="client@example.com" />
+            <button (click)="sendInvite()" [disabled]="inviteState() === 'sending'"
+              class="rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
+                     text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))]
+                     disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {{ inviteState() === 'sending' ? ('invite.sending' | translate) : ('invite.send' | translate) }}
+            </button>
+            <button (click)="toggleInviteForm()"
+              class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+              {{ 'common.cancel' | translate }}
+            </button>
+          </div>
+          @if (inviteMessage()) {
+            <p [class]="inviteState() === 'error' ? 'text-sm text-red-400' : 'text-sm text-green-400'">
+              {{ inviteMessage() }}
+            </p>
+          }
+        </div>
+      }
 
       @if (loading()) {
         <div class="space-y-2">
@@ -72,10 +109,8 @@ import type { Profile } from '../../../../core/auth/auth.types';
               class="w-full flex items-center justify-between px-4 py-3 text-sm text-neutral-400 hover:bg-neutral-800/50 transition-colors"
             >
               <span>{{ 'clients.inactive' | translate }} ({{ inactiveClients().length }})</span>
-              <svg class="w-4 h-4 transition-transform" [class.rotate-180]="inactiveExpanded()"
-                   fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
+              <app-icon name="chevron-down"
+                [iconClass]="'w-4 h-4 transition-transform' + (inactiveExpanded() ? ' rotate-180' : '')" />
             </button>
             @if (inactiveExpanded()) {
               <div class="border-t border-neutral-800">
@@ -114,6 +149,10 @@ export class ClientRosterComponent implements OnInit {
   readonly clients = signal<Profile[]>([]);
   readonly selectedClient = signal<Profile | null>(null);
   readonly inactiveExpanded = signal(false);
+  readonly inviteFormOpen = signal(false);
+  readonly inviteEmail = signal('');
+  readonly inviteState = signal<'idle' | 'sending' | 'success' | 'error'>('idle');
+  readonly inviteMessage = signal<string | null>(null);
 
   readonly activeClients = computed(() => this.clients().filter(c => c.is_active));
   readonly inactiveClients = computed(() => this.clients().filter(c => !c.is_active));
@@ -132,6 +171,33 @@ export class ClientRosterComponent implements OnInit {
   }
 
   toggleInactive(): void { this.inactiveExpanded.update(v => !v); }
+
+  toggleInviteForm(): void {
+    this.inviteFormOpen.update(v => !v);
+    this.inviteEmail.set('');
+    this.inviteState.set('idle');
+    this.inviteMessage.set(null);
+  }
+
+  async sendInvite(): Promise<void> {
+    const email = this.inviteEmail().trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.inviteState.set('error');
+      this.inviteMessage.set('Enter a valid email address.');
+      return;
+    }
+    this.inviteState.set('sending');
+    this.inviteMessage.set(null);
+    const { error } = await this.supabase.functions.invoke('invite-client', { body: { email } });
+    if (error) {
+      this.inviteState.set('error');
+      this.inviteMessage.set(error.message ?? 'Failed to send invite.');
+    } else {
+      this.inviteState.set('success');
+      this.inviteMessage.set(`Invite sent to ${email}`);
+      this.inviteEmail.set('');
+    }
+  }
   openSheet(client: Profile): void { this.selectedClient.set(client); }
   closeSheet(): void { this.selectedClient.set(null); }
   async onClientUpdated(): Promise<void> { await this.loadClients(); }

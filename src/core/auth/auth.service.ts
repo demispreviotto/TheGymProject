@@ -80,10 +80,17 @@ export class AuthService {
       .upsert({ id, email, name, role: 'free' }, { onConflict: 'id' });
   }
 
+  async refreshProfile(): Promise<void> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (user) await this.loadProfile(user.id);
+  }
+
   private redirectByRole(role: Profile['role']): void {
     const current = this.router.url;
     if (current === '/login' || current === '/') {
-      this.router.navigate([role === 'trainer' ? '/trainer' : '/dashboard']);
+      if (role === 'admin') this.router.navigate(['/admin']);
+      else if (role === 'trainer') this.router.navigate(['/trainer']);
+      else this.router.navigate(['/dashboard']);
     }
   }
 }

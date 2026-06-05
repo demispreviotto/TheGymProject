@@ -95,6 +95,63 @@ export const dictionary = {
   'profile.gym':             { en: 'Gym / Trainer',         es: 'Gimnasio / Entrenador' },
   'profile.language':        { en: 'Language',              es: 'Idioma' },
 
+  // Admin portal
+  'nav.admin.requests':            { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
+  'nav.admin.users':               { en: 'Users',                                  es: 'Usuarios' },
+  'admin.requests.title':          { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
+  'admin.requests.empty':          { en: 'No requests yet.',                       es: 'Aún no hay solicitudes.' },
+  'admin.requests.approve':        { en: 'Approve & Invite',                       es: 'Aprobar e Invitar' },
+  'admin.requests.reject':         { en: 'Reject',                                 es: 'Rechazar' },
+  'admin.requests.requester':      { en: 'Requested by',                           es: 'Solicitado por' },
+  'admin.requests.reason':         { en: 'Reason',                                 es: 'Razón' },
+  'admin.requests.invitee':        { en: 'Invitee',                                es: 'Invitado' },
+  'admin.users.title':             { en: 'Users',                                  es: 'Usuarios' },
+  'admin.users.invite':            { en: 'Direct Invite',                          es: 'Invitar Directamente' },
+  'admin.users.role':              { en: 'Role',                                   es: 'Rol' },
+  'admin.users.empty':             { en: 'No users found.',                        es: 'No se encontraron usuarios.' },
+
+  // Free user invite requests
+  'invite.friends.title':          { en: 'Invite Friends',                         es: 'Invitar Amigos' },
+  'invite.friends.remaining':      { en: 'Remaining invites',                      es: 'Invitaciones restantes' },
+  'invite.friends.name':           { en: 'Their name',                             es: 'Su nombre' },
+  'invite.friends.reason':         { en: 'Why should they have access?',           es: '¿Por qué deberían tener acceso?' },
+  'invite.friends.responsibility': { en: 'I accept responsibility for this user\'s usage', es: 'Acepto responsabilidad por el uso de este usuario' },
+  'invite.friends.submit':         { en: 'Send Request',                           es: 'Enviar Solicitud' },
+  'invite.friends.sent':           { en: 'Request submitted — pending admin approval', es: 'Solicitud enviada — pendiente de aprobación' },
+  'invite.friends.status.pending':  { en: 'Pending',                              es: 'Pendiente' },
+  'invite.friends.status.approved': { en: 'Approved',                             es: 'Aprobado' },
+  'invite.friends.status.rejected': { en: 'Rejected',                             es: 'Rechazado' },
+  'invite.friends.limit':          { en: 'You have used all your invite slots.',   es: 'Has utilizado todos tus cupos de invitación.' },
+
+  // My Plan (free/admin self-service)
+  'nav.myplan':                    { en: 'My Plan',                            es: 'Mi Plan' },
+  'nav.myplan.planning':           { en: 'My Plans',                           es: 'Mis Planes' },
+  'nav.myplan.exercises':          { en: 'My Exercises',                       es: 'Mis Ejercicios' },
+  'nav.myplan.friends':            { en: 'Friends',                            es: 'Amigos' },
+  'myplan.planning.title':         { en: 'My Plans',                           es: 'Mis Planes' },
+  'myplan.planning.empty.hint':    { en: 'Create your first plan to get started.', es: 'Crea tu primer plan para comenzar.' },
+  'myplan.exercises.title':        { en: 'My Exercises',                       es: 'Mis Ejercicios' },
+  'myplan.friends.title':          { en: 'Friends',                            es: 'Amigos' },
+  'myplan.friends.add':            { en: 'Add Friend',                         es: 'Agregar Amigo' },
+  'myplan.friends.pending':        { en: 'Pending Requests',                   es: 'Solicitudes Pendientes' },
+  'myplan.friends.sent':           { en: 'Sent Requests',                      es: 'Solicitudes Enviadas' },
+  'myplan.friends.accept':         { en: 'Accept',                             es: 'Aceptar' },
+  'myplan.friends.reject':         { en: 'Reject',                             es: 'Rechazar' },
+  'myplan.friends.cancel':         { en: 'Cancel Request',                     es: 'Cancelar Solicitud' },
+  'myplan.friends.empty':          { en: 'No friends yet. Add someone to get started.', es: 'Aún sin amigos. Agrega a alguien para comenzar.' },
+  'myplan.friends.connected':      { en: 'Connected',                          es: 'Conectado' },
+  'myplan.friends.request.sent':   { en: 'Request sent!',                      es: '¡Solicitud enviada!' },
+  'myplan.share.friends':          { en: 'Share with friends',                 es: 'Compartir con amigos' },
+  'myplan.share.friends.hint':     { en: 'Friends you are connected with can view this plan.', es: 'Tus amigos conectados podrán ver este plan.' },
+
+  // Client invite
+  'invite.button':          { en: 'Invite Client',                                                    es: 'Invitar Cliente' },
+  'invite.email':           { en: 'Client email address',                                             es: 'Email del cliente' },
+  'invite.send':            { en: 'Send Invite',                                                      es: 'Enviar Invitación' },
+  'invite.sending':         { en: 'Sending…',                                                         es: 'Enviando…' },
+  'invite.sent':            { en: 'Invite sent successfully',                                          es: 'Invitación enviada con éxito' },
+  'invite.error.invalid':   { en: 'Enter a valid email address.',                                     es: 'Ingresa un correo válido.' },
+
   // Trainer branding panel
   'branding.title':          { en: 'Gym Branding',          es: 'Imagen del Gimnasio' },
   'branding.unlock':         { en: 'Edit Branding',         es: 'Editar Imagen' },
@@ -103,6 +160,8 @@ export const dictionary = {
   'branding.color.hint':     { en: 'Hex value, e.g. #EF4444', es: 'Valor hex, ej. #EF4444' },
   'branding.logo':           { en: 'Logo SVG',              es: 'Logo SVG' },
   'branding.logo.hint':      { en: 'Paste raw SVG markup (max 64 KB)', es: 'Pega el SVG directamente (máx 64 KB)' },
+  'branding.logo.set':       { en: 'Custom logo uploaded',             es: 'Logo personalizado cargado' },
+  'branding.logo.empty':     { en: 'No logo set',                      es: 'Sin logo configurado' },
   'branding.color.invalid':  { en: 'Enter a valid hex color (e.g. #EF4444)', es: 'Ingresa un color hex válido (ej. #EF4444)' },
 } satisfies Record<string, Record<Language, string>>;
 

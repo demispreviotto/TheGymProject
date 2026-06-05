@@ -196,10 +196,72 @@ See Phase 4 "Completed in Phase 5 Task 4" above.
 
 ---
 
-## Phase 7: Corporate Gym & Organization Tier
+## Phase 7: Invitation & Access Control System
+**Status: ✅ COMPLETE (local) — ⏳ Pending production deploy**
+
+> **Environment status:**
+> - Local Docker: all migrations applied and verified ✓
+> - Production (Vercel + Supabase): last applied migration is Phase 6 (`20260530000006`). The 3 migrations below must be pushed via `supabase db push` before deploying the frontend.
+
+### Migrations (local only — not yet in production)
+| File | What it adds |
+|------|-------------|
+| `20260605174327_invite_trigger_update.sql` | `handle_new_user` reads `raw_app_meta_data` for role/tenant linkage |
+| `20260605182335_add_admin_role.sql` | `'admin'` value added to `user_role` enum |
+| `20260605182337_invite_requests_table.sql` | `invite_requests` table + RLS + admin profile policies + trainer invite auto-creates tenant row |
+
+### Edge Functions (must be deployed)
+```bash
+supabase functions deploy invite-client --project-ref YOUR_REF
+supabase secrets set SITE_URL=https://YOUR_VERCEL_URL --project-ref YOUR_REF
+```
+
+### Supabase Dashboard (manual — Auth > URL Configuration)
+- Site URL: `https://YOUR_VERCEL_URL`
+- Add redirect URL: `https://YOUR_VERCEL_URL/register`
+
+### Delivered
+- **`admin` role**: new `UserRole` value; `roleGuard` + `redirectByRole` handle it; admin lands on `/admin` after login
+- **`/register` route**: public route for invite link redemption; `RegisterComponent` handles `#access_token` from invite email, lets user set name + password
+- **Trainer → client invite** (`/trainer/clients`): "Invite Client" button sends email via Edge Function; client auto-linked to trainer's tenant
+- **Free user invite requests** (`/profile`): free users submit up to 2 invite requests (name, email, reason, responsibility checkbox); capped at 2 pending+approved
+- **Admin portal** (`/admin/requests`): table of all invite requests with Approve & Invite / Reject actions
+- **Admin user management** (`/admin/users`): full user table with role dropdown, active toggle, direct invite form (any role)
+- **`invite_requests` table**: RLS — requesters read own; admin reads all, updates status
+- **`handle_new_user` trigger** updated: reads `app_metadata` for role/tenant; trainer invites auto-create a `tenants` row
+- **i18n**: 27 new translation keys for all new UI (EN/ES)
+
+### To activate admin on your own account (post deploy)
+In Supabase Studio → `profiles` table → find your row → set `role = 'admin'`
+
+---
+
+## Phase 8: Free User Self-Service Planning + Friend Sharing
+**Status: ✅ COMPLETE (local) — ⏳ Pending production deploy**
+
+> **Environment status:**
+> - Local Docker: migration applied and verified ✓
+> - Production: pending — deploy alongside Phase 7 migrations
+
+### Migration (local only)
+| File | What it adds |
+|------|-------------|
+| `20260605191428_phase8_free_user_planning.sql` | RLS for free/admin on exercises + plannings + planning_days + prescribed_exercises; `plannings.is_shared_with_friends`; `friendships` table + RLS |
+
+### Delivered
+- **Free/admin users can create their own exercises** (`/my-plan/exercises`) — private, only visible to themselves; use same `ExerciseService` and `ExerciseEditSheetComponent`
+- **Free/admin users can create their own training plans** (`/my-plan/planning`) — full CRUD via `PlanningFormComponent` (shared from trainer section); `../` back-navigation works naturally
+- **Friend request system** (`/my-plan/friends`) — send request by email, accept/reject incoming, cancel sent; `FriendshipService` in `core/friendships/`
+- **Plan sharing with friends** — "Share with friends" toggle on each plan (`is_shared_with_friends`); accepted friends can read shared plans via RLS
+- **Nav updated**: free and admin users see "My Plans", "My Exercises", "Friends" in sidebar
+- **i18n**: 20 new translation keys (EN/ES)
+
+---
+
+## Phase 9: Corporate Gym & Organization Tier
 **Status: 🗺 Conceptual — not scheduled**
 
-*Introduces a fourth role (`'gym'`) enabling multi-trainer facilities. Gym accounts act as overarching managers with authority over trainer and client assignment. Implementation is deferred until Phase 6 is fully shipped.*
+*Introduces a fourth role (`'gym'`) enabling multi-trainer facilities. Gym accounts act as overarching managers with authority over trainer and client assignment. Implementation is deferred until Phase 8 is fully shipped.*
 
 **Role hierarchy**
 ```

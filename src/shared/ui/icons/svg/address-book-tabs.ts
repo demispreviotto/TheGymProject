@@ -1,0 +1,3 @@
+// Phosphor: ShieldSlash — https://phosphoricons.com/?q=address-book-tabs
+export const addressBookTabs =
+    '<path d="M184 160h32M184 96h32M48 48h160a8 8 0 0 1 8 8v144a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V56a8 8 0 0 1 8-8Zm64 72a24 24 0 1 1-24-24 24 24 0 0 1 24 24Zm-32 48c3.55-13.8 17.09-24 32-24s28.46 10.19 32 24M184 40v176" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>'
