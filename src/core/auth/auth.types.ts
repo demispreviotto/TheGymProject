@@ -1,4 +1,4 @@
-export type UserRole = 'trainer' | 'user' | 'free';
+export type UserRole = 'trainer' | 'user' | 'free' | 'admin';
 export type Language = 'en' | 'es';
 
 export interface Tenant {

@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, CdkDropList, CdkDrag, moveItemInArray } from '@angular/cdk/drag-drop';
+import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import type { MuscleGroup, MuscleIntensity } from '../../../../core/planning/planning.types';
 
 const INTENSITY_LABELS: Record<MuscleIntensity, string> = {
@@ -32,7 +33,7 @@ function indexToIntensity(i: number): MuscleIntensity {
   selector: 'app-muscle-tag-matrix',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CdkDropList, CdkDrag],
+  imports: [FormsModule, CdkDropList, CdkDrag, AppIconComponent],
   template: `
     <div class="space-y-3">
       <label class="text-sm font-medium text-neutral-300">Muscle Groups</label>
@@ -50,10 +51,7 @@ function indexToIntensity(i: number): MuscleIntensity {
                    bg-neutral-900 border-neutral-700 select-none"
           >
             <!-- Drag handle -->
-            <svg cdkDragHandle class="w-4 h-4 text-neutral-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 8h16M4 16h16" />
-            </svg>
+            <app-icon cdkDragHandle name="drag-handle" iconClass="w-4 h-4 text-neutral-600 flex-shrink-0" />
 
             <span class="flex-1 text-sm text-neutral-100">{{ group.name }}</span>
 
@@ -66,9 +64,7 @@ function indexToIntensity(i: number): MuscleIntensity {
               (click)="remove(i)"
               class="text-neutral-600 hover:text-red-400 transition-colors ml-1"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <app-icon name="x-mark" />
             </button>
           </div>
         }

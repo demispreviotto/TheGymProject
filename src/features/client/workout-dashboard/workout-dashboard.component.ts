@@ -5,6 +5,7 @@ import { WorkoutService, WorkoutPlanFull, WorkoutPrescribed, LogPayload } from '
 import { PlanningService } from '../../../core/planning/planning.service';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { ExigenceLevel } from '../../../core/planning/planning.types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,7 +26,7 @@ interface WorkoutRowState {
   selector: 'app-workout-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe],
+  imports: [FormsModule, TranslatePipe, AppIconComponent],
   template: `
     <div class="max-w-lg mx-auto">
 
@@ -39,10 +40,7 @@ interface WorkoutRowState {
       } @else if (!assignedPlanId()) {
         <div class="flex flex-col items-center py-12 text-center gap-4">
           <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
-            <svg class="w-8 h-8 text-neutral-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-            </svg>
+            <app-icon name="bolt" iconClass="w-8 h-8 text-neutral-500" />
           </div>
           <h2 class="text-lg font-semibold text-neutral-100">{{ 'dashboard.noplan.title' | translate }}</h2>
           <p class="text-sm text-neutral-400 max-w-[280px]">{{ 'dashboard.noplan.body' | translate }}</p>
@@ -165,9 +163,7 @@ interface WorkoutRowState {
                 (click)="toggleComplete(i)"
                 [class]="completeButtonClass(row.isCompleted)"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
+                <app-icon name="check" />
                 {{ row.isCompleted ? ('dashboard.completed' | translate) : ('dashboard.complete' | translate) }}
               </button>
             </div>
@@ -201,14 +197,8 @@ interface WorkoutRowState {
         <div class="flex justify-center gap-2 mb-8">
           @for (star of stars; track star) {
             <button (click)="subjectiveScore.set(star)" class="transition-transform hover:scale-110">
-              <svg
-                class="w-10 h-10 transition-colors"
-                [class]="star <= subjectiveScore() ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-600'"
-                fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-              </svg>
+              <app-icon name="star"
+                [iconClass]="'w-10 h-10 transition-colors ' + (star <= subjectiveScore() ? 'text-yellow-400' : 'text-neutral-600')" />
             </button>
           }
         </div>

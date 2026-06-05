@@ -6,16 +6,18 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## Current Development State
 
-**Active Phase:** Phases 1–6 complete. Phase 7 (Corporate Gym tier) is conceptual/unscheduled.
+**Active Phase:** Phases 7 & 8 complete locally — pending production deploy. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
 
-| Phase | Status | Summary |
-|-------|--------|---------|
-| 1 — Infrastructure | ✅ Done | Supabase CLI, SQL schema + RLS migrations, seed data |
-| 2 — Angular Scaffold | ✅ Done | Auth, ThemeService, async roleGuard/authGuard, LoginComponent |
-| 3 — Mobile Workout Engine | ✅ Done | WorkoutService + WorkoutDashboardComponent: Epley 1RM, adaptive inputs, session drawer |
-| 4 — Trainer Admin Dashboard | ✅ Done | Exercise & Planning CRUD, ExerciseEditSheetComponent, ClientRosterComponent + ClientDetailSheetComponent |
-| 5 — Shell, Workout Engine, Client Portal | ✅ Done | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
-| 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
+| Phase | Status | Environment | Summary |
+|-------|--------|-------------|---------|
+| 1 — Infrastructure | ✅ Done | Production | Supabase CLI, SQL schema + RLS migrations, seed data |
+| 2 — Angular Scaffold | ✅ Done | Production | Auth, ThemeService, async roleGuard/authGuard, LoginComponent |
+| 3 — Mobile Workout Engine | ✅ Done | Production | WorkoutService + WorkoutDashboardComponent: Epley 1RM, adaptive inputs, session drawer |
+| 4 — Trainer Admin Dashboard | ✅ Done | Production | Exercise & Planning CRUD, ExerciseEditSheetComponent, ClientRosterComponent + ClientDetailSheetComponent |
+| 5 — Shell, Workout Engine, Client Portal | ✅ Done | Production | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
+| 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | Production | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
+| 7 — Invitation & Access Control | ✅ Done | **Local only** | RegisterComponent, trainer invites, admin portal, free-user invite requests, `invite_requests` table, `admin` role |
+| 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | **Local only** | Free/admin users create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes |
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -185,6 +187,64 @@ ALTER TABLE public.plannings
   ADD COLUMN is_shared_with_gym BOOLEAN DEFAULT FALSE NOT NULL; -- enables protocol link sharing
 ```
 
+### Phase 7 Schema (migrations 20260605* — ⏳ local only, not yet in production)
+
+```sql
+-- user_role enum gains 'admin'
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
+
+-- New table: free-user invite requests pending admin approval
+CREATE TABLE public.invite_requests (
+  id                      UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  requester_id            UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  invitee_email           TEXT NOT NULL,
+  invitee_name            TEXT NOT NULL,
+  reason                  TEXT NOT NULL,
+  accepted_responsibility BOOLEAN NOT NULL DEFAULT FALSE,
+  status                  TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  reviewer_id             UUID REFERENCES public.profiles(id),
+  reviewer_note           TEXT,
+  created_at              TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at             TIMESTAMPTZ
+);
+-- RLS: requester reads own; admin reads/updates all
+
+-- handle_new_user trigger updated: reads raw_app_meta_data for role/tenant linkage;
+-- trainer invites auto-create a tenants row so new trainers have branding from day 1.
+
+-- New admin RLS policies on profiles:
+--   "admin can read all profiles"   — TO authenticated USING (get_my_role() = 'admin')
+--   "admin can update all profiles" — TO authenticated USING/WITH CHECK (get_my_role() = 'admin')
+```
+
+### Phase 8 Schema (migration 20260605191428 — ⏳ local only)
+
+```sql
+-- New RLS policies (all use get_my_role() IN ('free','admin') AND tenant_id = auth.uid())
+-- Applied to: exercises, plannings, planning_days, prescribed_exercises
+
+-- PLANNINGS addition
+ALTER TABLE public.plannings
+  ADD COLUMN is_shared_with_friends BOOLEAN DEFAULT FALSE NOT NULL;
+
+-- Friendship connections between free/admin users
+CREATE TABLE public.friendships (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  requester_id  UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  addressee_id  UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected')),
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(requester_id, addressee_id)
+);
+-- RLS: both parties see their own rows; requester inserts; addressee updates; requester deletes
+-- Extra SELECT policy on plannings: accepted friends can read is_shared_with_friends=true plans
+```
+
+### Edge Functions (`supabase/functions/`)
+| File | Status | Purpose |
+|------|--------|---------|
+| `invite-client/index.ts` | ⏳ Local only (must deploy) | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body) |
+
 ---
 
 ## 4. Codebase File Map
@@ -192,14 +252,18 @@ ALTER TABLE public.plannings
 All source lives under `src/`. Angular app root is `src/app/`.
 
 ### Migrations (`supabase/migrations/`)
-| File | What it adds |
-|------|-------------|
-| `20260524000001_enums.sql` | `user_role`, `muscle_intensity`, `tracking_mode` enums |
-| `20260524000002_tables.sql` | All core tables |
-| `20260524000003_rls.sql` | Row-Level Security policies |
-| `20260524000004_profiles_assigned_planning.sql` | `profiles.assigned_planning_id` |
-| `20260526000005_profiles_is_active.sql` | `profiles.is_active` |
-| `20260530000006_phase6_schema.sql` | `tenants` table; `profiles.tenant_ref_id`, `preferred_language`, `assigned_trainer_id`; `plannings.is_shared_with_gym` |
+| File | Status | What it adds |
+|------|--------|-------------|
+| `20260524000001_enums.sql` | ✅ Production | `user_role`, `muscle_intensity`, `tracking_mode` enums |
+| `20260524000002_tables.sql` | ✅ Production | All core tables + `handle_new_user` trigger |
+| `20260524000003_rls.sql` | ✅ Production | Row-Level Security policies |
+| `20260524000004_profiles_assigned_planning.sql` | ✅ Production | `profiles.assigned_planning_id` |
+| `20260526000005_profiles_is_active.sql` | ✅ Production | `profiles.is_active` |
+| `20260530000006_phase6_schema.sql` | ✅ Production | `tenants` table; `profiles.tenant_ref_id`, `preferred_language`, `assigned_trainer_id`; `plannings.is_shared_with_gym` |
+| `20260605174327_invite_trigger_update.sql` | ⏳ Local only | `handle_new_user` reads `raw_app_meta_data`; trainer invite auto-creates `tenants` row |
+| `20260605182335_add_admin_role.sql` | ⏳ Local only | `'admin'` added to `user_role` enum |
+| `20260605182337_invite_requests_table.sql` | ⏳ Local only | `invite_requests` table + RLS; admin policies on `profiles` |
+| `20260605191428_phase8_free_user_planning.sql` | ⏳ Local only | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
 
 ### Core (`src/core/`)
 | File | Purpose |
@@ -211,11 +275,13 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `theme/theme.service.ts` | Hex→HSL conversion; injects `--tenant-*` CSS custom properties |
 | `exercises/exercise.service.ts` | `exercises` signal; `load`, `create`, `update`, `delete` |
 | `planning/planning.types.ts` | All domain types: `Exercise`, `Planning`, `PlanningDay`, `PrescribedExercise`, `WorkoutSession`, `WorkoutLog`, enums |
-| `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers`, `setShared`, `lookupSharedPlan` |
+| `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers`, `setShared`, `setSharedWithFriends`, `lookupSharedPlan` |
+| `friendships/friendship.service.ts` | `friendships` signal; computed `friends`, `pendingReceived`, `pendingSent`; `load`, `sendRequest`, `accept`, `reject`, `cancel` |
 | `i18n/i18n.dictionary.ts` | Full EN/ES translation dictionary (70+ keys); `translate(key, lang)` pure function |
 | `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |
 | `tenant/tenant.service.ts` | `tenant` computed from `AuthService`; `update(patch)` — DB write + live theme propagation |
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
+| `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
 
 ### Features (`src/features/`)
 | File | Route | Role |
@@ -234,6 +300,14 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` | trainer |
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
+| `auth/register/register.component.ts` | `/register` | public (invite link) |
+| `admin/admin-shell/admin-shell.component.ts` | `/admin` (bare router-outlet) | admin |
+| `admin/invite-requests/admin-invite-requests.component.ts` | `/admin/requests` | admin |
+| `admin/users/admin-users.component.ts` | `/admin/users` | admin |
+| `free/my-plan-shell/my-plan-shell.component.ts` | `/my-plan` (bare router-outlet) | free · admin |
+| `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin |
+| `free/my-exercise-list/my-exercise-list.component.ts` | `/my-plan/exercises` | free · admin |
+| `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
 
 ### Shared UI (`src/shared/`)
 | Export | File | Type |

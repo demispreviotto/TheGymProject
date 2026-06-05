@@ -139,6 +139,19 @@ export class PlanningService {
     return error?.message ?? null;
   }
 
+  async setSharedWithFriends(planId: string, value: boolean): Promise<string | null> {
+    const { error } = await this.supabase
+      .from('plannings')
+      .update({ is_shared_with_friends: value })
+      .eq('id', planId);
+    if (!error) {
+      this.plannings.update(list =>
+        list.map(p => p.id === planId ? { ...p, is_shared_with_friends: value } : p),
+      );
+    }
+    return error?.message ?? null;
+  }
+
   async lookupSharedPlan(planId: string): Promise<Planning | null> {
     const { data } = await this.supabase
       .from('plannings')
