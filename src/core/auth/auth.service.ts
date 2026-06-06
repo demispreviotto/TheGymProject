@@ -22,7 +22,11 @@ export class AuthService {
   }
 
   initialize(): void {
-    this.supabase.auth.onAuthStateChange((_event, session) => {
+    this.supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        this.router.navigate(['/reset-password']);
+        return;
+      }
       if (session?.user) {
         this.loadProfile(session.user.id);
       } else {
