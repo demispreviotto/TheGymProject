@@ -13,6 +13,11 @@ export const routes: Routes = [
       import('../features/auth/register/register.component').then(m => m.RegisterComponent),
   },
   {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('../features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+  },
+  {
     path: '',
     loadComponent: () =>
       import('../features/shell/app-shell/app-shell.component').then(m => m.AppShellComponent),
