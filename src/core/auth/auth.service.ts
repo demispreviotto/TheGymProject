@@ -27,6 +27,17 @@ export class AuthService {
         this.router.navigate(['/reset-password']);
         return;
       }
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Invite links carry type=invite in the URL hash — always send to /register
+        // so the user can set their password before we load their profile.
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        if (hash.get('type') === 'invite') {
+          this.router.navigate(['/register']);
+          return;
+        }
+        this.loadProfile(session.user.id);
+        return;
+      }
       if (session?.user) {
         this.loadProfile(session.user.id);
       } else {
