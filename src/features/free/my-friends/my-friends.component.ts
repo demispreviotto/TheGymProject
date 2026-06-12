@@ -17,7 +17,14 @@ import type { Friendship } from '../../../core/friendships/friendship.service';
 
       <!-- Add friend -->
       <div class="rounded-xl border border-neutral-800 bg-neutral-900 p-4 space-y-3">
-        <p class="text-sm font-medium text-neutral-200">{{ 'myplan.friends.add' | translate }}</p>
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-neutral-200">{{ 'myplan.friends.add' | translate }}</p>
+          <button (click)="shareMyContact()"
+            class="text-xs px-3 py-1.5 rounded-md border border-neutral-700 text-neutral-400
+                   hover:border-neutral-500 hover:text-neutral-200 transition-colors">
+            {{ 'myplan.friends.share.contact' | translate }}
+          </button>
+        </div>
         <div class="flex gap-2">
           <input
             type="email"
@@ -136,6 +143,21 @@ export class MyFriendsComponent implements OnInit {
   readonly addSuccess = signal(false);
 
   ngOnInit(): void { this.service.load(); }
+
+  async shareMyContact(): Promise<void> {
+    const me = this.auth.profile();
+    if (!me) return;
+    const shareData = {
+      title: 'Gym Planificación — Connect with me',
+      text: `Add me as a friend on Gym Planificación! My email is: ${me.email}`,
+      url: window.location.origin + '/my-plan/friends',
+    };
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await navigator.clipboard.writeText(`${shareData.text} — ${shareData.url}`);
+    }
+  }
 
   async sendRequest(): Promise<void> {
     const email = this.addEmail().trim();
