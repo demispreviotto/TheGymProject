@@ -155,7 +155,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
     }
 
     if (this.userId) {
-      await this.supabase.from('profiles').update({ name }).eq('id', this.userId);
+      await this.supabase.from('profiles').update({ name, is_active: true }).eq('id', this.userId);
     }
 
     await this.auth.refreshProfile();
