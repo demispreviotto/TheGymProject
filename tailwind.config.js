@@ -6,6 +6,9 @@ module.exports = {
   content: ['./src/**/*.{html,ts}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Lexend', 'sans-serif'],
+      },
       colors: {
         tenant: {
           primary:   'hsl(var(--tenant-primary) / <alpha-value>)',
