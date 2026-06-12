@@ -30,34 +30,59 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
       @if (inviteFormOpen()) {
         <div class="rounded-xl border border-neutral-800 bg-neutral-900 p-4 mb-6 space-y-3">
           <p class="text-sm font-semibold text-neutral-200">{{ 'admin.users.invite' | translate }}</p>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
-              class="sm:col-span-2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
-                     text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
-                     focus:outline-none focus:ring-1 focus:ring-[hsl(var(--tenant-primary))]"
-              placeholder="email@example.com" />
-            <select [ngModel]="inviteRole()" (ngModelChange)="inviteRole.set($event)"
-              class="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100
-                     focus:border-[hsl(var(--tenant-primary))] focus:outline-none">
-              <option value="free">free</option>
-              <option value="trainer">trainer</option>
-              <option value="user">user</option>
-            </select>
-          </div>
-          <div class="flex gap-2">
-            <button (click)="sendDirectInvite()" [disabled]="inviteState() === 'sending'"
-              class="rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
-                     text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))]
-                     disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {{ inviteState() === 'sending' ? ('invite.sending' | translate) : ('invite.send' | translate) }}
-            </button>
-            <button (click)="toggleInviteForm()"
-              class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
-              {{ 'common.cancel' | translate }}
-            </button>
-          </div>
-          @if (inviteMessage()) {
-            <p [class]="inviteState() === 'error' ? 'text-sm text-red-400' : 'text-sm text-green-400'">{{ inviteMessage() }}</p>
+
+          @if (inviteStep() === 'form') {
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
+                class="sm:col-span-2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
+                       text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
+                       focus:outline-none focus:ring-1 focus:ring-[hsl(var(--tenant-primary))]"
+                placeholder="email@example.com" />
+              <select [ngModel]="inviteRole()" (ngModelChange)="inviteRole.set($event)"
+                class="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100
+                       focus:border-[hsl(var(--tenant-primary))] focus:outline-none">
+                <option value="free">free</option>
+                <option value="trainer">trainer</option>
+                <option value="user">user</option>
+              </select>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="sendDirectInvite()" [disabled]="inviteState() === 'sending'"
+                class="rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
+                       text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))]
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {{ inviteState() === 'sending' ? ('invite.generating' | translate) : ('invite.generate' | translate) }}
+              </button>
+              <button (click)="toggleInviteForm()"
+                class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+                {{ 'common.cancel' | translate }}
+              </button>
+            </div>
+            @if (inviteState() === 'error' && inviteMessage()) {
+              <p class="text-sm text-red-400">{{ inviteMessage() }}</p>
+            }
+          }
+
+          @if (inviteStep() === 'ready') {
+            <p class="text-xs text-neutral-400">
+              Invite ready for <span class="text-neutral-200 font-medium">{{ inviteEmail() }}</span>
+            </p>
+            <div class="flex gap-2">
+              <button (click)="shareInvite()"
+                class="flex-1 rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
+                       text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))] transition-colors">
+                {{ 'invite.share' | translate }}
+              </button>
+              <button (click)="resetInviteForm()"
+                class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+                {{ 'invite.another' | translate }}
+              </button>
+              <button (click)="toggleInviteForm()"
+                class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+                {{ 'common.close' | translate }}
+              </button>
+            </div>
+            <p class="text-xs text-neutral-600">{{ 'invite.link.expiry' | translate }}</p>
           }
         </div>
       }
@@ -137,8 +162,10 @@ export class AdminUsersComponent implements OnInit {
   readonly inviteFormOpen = signal(false);
   readonly inviteEmail = signal('');
   readonly inviteRole = signal<'free' | 'trainer' | 'user'>('free');
-  readonly inviteState = signal<'idle' | 'sending' | 'success' | 'error'>('idle');
+  readonly inviteState = signal<'idle' | 'sending' | 'error'>('idle');
   readonly inviteMessage = signal<string | null>(null);
+  readonly inviteStep = signal<'form' | 'ready'>('form');
+  private inviteLink: string | null = null;
 
   async ngOnInit(): Promise<void> {
     await this.loadUsers();
@@ -156,10 +183,16 @@ export class AdminUsersComponent implements OnInit {
 
   toggleInviteForm(): void {
     this.inviteFormOpen.update(v => !v);
+    this.resetInviteForm();
+  }
+
+  resetInviteForm(): void {
     this.inviteEmail.set('');
     this.inviteRole.set('free');
     this.inviteState.set('idle');
     this.inviteMessage.set(null);
+    this.inviteStep.set('form');
+    this.inviteLink = null;
   }
 
   async sendDirectInvite(): Promise<void> {
@@ -171,17 +204,31 @@ export class AdminUsersComponent implements OnInit {
     }
     this.inviteState.set('sending');
     this.inviteMessage.set(null);
-    const { error } = await this.supabase.functions.invoke('invite-client', {
+
+    const { data, error } = await this.supabase.functions.invoke('invite-client', {
       body: { email, role: this.inviteRole() },
     });
     if (error) {
       this.inviteState.set('error');
-      this.inviteMessage.set(error.message ?? 'Failed to send invite.');
+      this.inviteMessage.set(error.message ?? 'Failed to generate invite.');
     } else {
-      this.inviteState.set('success');
-      this.inviteMessage.set(`Invite sent to ${email}`);
-      this.inviteEmail.set('');
+      this.inviteLink = data?.inviteLink ?? null;
+      this.inviteStep.set('ready');
       await this.loadUsers();
+    }
+  }
+
+  async shareInvite(): Promise<void> {
+    if (!this.inviteLink) return;
+    const shareData = {
+      title: 'Gym Planificación — Invitation',
+      text: `You've been invited to join Gym Planificación! Tap the link to set up your account.`,
+      url: this.inviteLink,
+    };
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await navigator.clipboard.writeText(this.inviteLink);
     }
   }
 

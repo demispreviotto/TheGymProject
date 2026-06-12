@@ -3,6 +3,7 @@
 -- Runs after all migrations via `supabase db reset`.
 --
 -- Test credentials (all accounts):
+--   admin@test.local   / Test1234!   → role: admin
 --   trainer@test.local / Test1234!   → role: trainer
 --   user@test.local    / Test1234!   → role: user    (tenant: trainer)
 --   free@test.local    / Test1234!   → role: free
@@ -12,6 +13,7 @@
 
 DO $$
 DECLARE
+  admin_id   UUID := '00000000-0000-0000-0000-000000000000';
   trainer_id UUID := '00000000-0000-0000-0000-000000000001';
   client_id  UUID := '00000000-0000-0000-0000-000000000002';
   free_id    UUID := '00000000-0000-0000-0000-000000000003';
@@ -31,6 +33,17 @@ BEGIN
     raw_app_meta_data, raw_user_meta_data,
     created_at, updated_at
   ) VALUES
+    (
+      '00000000-0000-0000-0000-000000000000',
+      admin_id, 'authenticated', 'authenticated',
+      'admin@test.local',
+      crypt('Test1234!', gen_salt('bf', 10)),
+      now(),
+      '', '', '', '',
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Admin User"}'::jsonb,
+      now(), now()
+    ),
     (
       '00000000-0000-0000-0000-000000000000',
       trainer_id, 'authenticated', 'authenticated',
@@ -72,6 +85,11 @@ BEGIN
   INSERT INTO auth.identities (id, provider_id, user_id, identity_data, provider, created_at, updated_at)
   VALUES
     (
+      admin_id, 'admin@test.local', admin_id,
+      jsonb_build_object('sub', admin_id::text, 'email', 'admin@test.local', 'email_verified', true),
+      'email', now(), now()
+    ),
+    (
       trainer_id, 'trainer@test.local', trainer_id,
       jsonb_build_object('sub', trainer_id::text, 'email', 'trainer@test.local', 'email_verified', true),
       'email', now(), now()
@@ -98,6 +116,10 @@ BEGIN
   INSERT INTO public.tenants (id, owner_id, name, primary_hex)
   VALUES (gym_tenant_id, trainer_id, 'Test Gym', '#EF4444')
   ON CONFLICT (id) DO NOTHING;
+
+  UPDATE public.profiles
+  SET role = 'admin'
+  WHERE id = admin_id;
 
   -- tenant_id keeps pointing to the trainer's user ID (preserves existing RLS policies)
   -- tenant_ref_id points to the new tenants table row

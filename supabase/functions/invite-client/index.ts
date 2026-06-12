@@ -20,9 +20,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const siteUrl = (Deno.env.get('SITE_URL') ?? supabaseUrl).replace(/\/$/, '');
+
+    console.log('env check — SUPABASE_URL present:', !!supabaseUrl, '| SITE_URL:', siteUrl);
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(JSON.stringify({ error: 'Missing environment variables' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -83,16 +91,23 @@ Deno.serve(async (req: Request) => {
       tenantRefId = callerProfile.tenant_ref_id ?? null;
     }
 
-    // Step 1: Send invite email
-    const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${siteUrl}/register`,
+    // Step 1: Generate invite link (no email sent — admin shares the link manually)
+    console.log('calling generateLink for', email, '— redirectTo:', `${siteUrl}/register`);
+    const { data: linkData, error: inviteErr } = await adminClient.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: { redirectTo: `${siteUrl}/register` },
     });
 
     if (inviteErr) {
+      console.error('generateLink error:', inviteErr.message);
       return new Response(JSON.stringify({ error: inviteErr.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const inviteData = { user: linkData.user };
+    const inviteLink = linkData.properties.action_link;
 
     // Step 2: Set app_metadata (server-controlled, not user-editable)
     await adminClient.auth.admin.updateUserById(inviteData.user.id, {
@@ -132,11 +147,12 @@ Deno.serve(async (req: Request) => {
       .update(profilePatch)
       .eq('id', inviteData.user.id);
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, inviteLink }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (_err) {
-    return new Response(JSON.stringify({ error: 'Unexpected error' }), {
+  } catch (err) {
+    console.error('unhandled exception:', err);
+    return new Response(JSON.stringify({ error: 'Unexpected error', detail: String(err) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

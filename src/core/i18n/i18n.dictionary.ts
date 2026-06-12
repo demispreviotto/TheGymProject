@@ -16,6 +16,7 @@ export const dictionary = {
   'common.save':          { en: 'Save Changes',      es: 'Guardar Cambios' },
   'common.saving':        { en: 'Saving…',           es: 'Guardando…' },
   'common.cancel':        { en: 'Cancel',            es: 'Cancelar' },
+  'common.close':         { en: 'Close',             es: 'Cerrar' },
   'common.delete':        { en: 'Delete',            es: 'Eliminar' },
   'common.edit':          { en: 'Edit',              es: 'Editar' },
   'common.confirm':       { en: 'Confirm',           es: 'Confirmar' },
@@ -141,6 +142,7 @@ export const dictionary = {
   'myplan.friends.empty':          { en: 'No friends yet. Add someone to get started.', es: 'Aún sin amigos. Agrega a alguien para comenzar.' },
   'myplan.friends.connected':      { en: 'Connected',                          es: 'Conectado' },
   'myplan.friends.request.sent':   { en: 'Request sent!',                      es: '¡Solicitud enviada!' },
+  'myplan.friends.share.contact':  { en: 'Share my contact',                   es: 'Compartir mi contacto' },
   'myplan.share.friends':          { en: 'Share with friends',                 es: 'Compartir con amigos' },
   'myplan.share.friends.hint':     { en: 'Friends you are connected with can view this plan.', es: 'Tus amigos conectados podrán ver este plan.' },
 
@@ -150,6 +152,11 @@ export const dictionary = {
   'invite.send':            { en: 'Send Invite',                                                      es: 'Enviar Invitación' },
   'invite.sending':         { en: 'Sending…',                                                         es: 'Enviando…' },
   'invite.sent':            { en: 'Invite sent successfully',                                          es: 'Invitación enviada con éxito' },
+  'invite.generate':        { en: 'Generate Invite',                                                  es: 'Generar Invitación' },
+  'invite.generating':      { en: 'Generating…',                                                      es: 'Generando…' },
+  'invite.share':           { en: 'Share Invite',                                                     es: 'Compartir Invitación' },
+  'invite.another':         { en: 'Invite another',                                                   es: 'Invitar a otro' },
+  'invite.link.expiry':     { en: 'Link expires in 24 h · one-time use only.',                        es: 'El enlace expira en 24 h · uso único.' },
   'invite.error.invalid':   { en: 'Enter a valid email address.',                                     es: 'Ingresa un correo válido.' },
 
   // Trainer branding panel

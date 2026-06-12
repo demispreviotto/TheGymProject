@@ -33,28 +33,51 @@ import type { Profile } from '../../../../core/auth/auth.types';
       @if (inviteFormOpen()) {
         <div class="rounded-xl border border-neutral-800 bg-neutral-900 p-4 mb-6 space-y-3">
           <p class="text-sm font-medium text-neutral-300">{{ 'invite.email' | translate }}</p>
-          <div class="flex gap-2">
-            <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
-              (keydown.enter)="sendInvite()"
-              class="flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
-                     text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
-                     focus:outline-none focus:ring-1 focus:ring-[hsl(var(--tenant-primary))]"
-              placeholder="client@example.com" />
-            <button (click)="sendInvite()" [disabled]="inviteState() === 'sending'"
-              class="rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
-                     text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))]
-                     disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {{ inviteState() === 'sending' ? ('invite.sending' | translate) : ('invite.send' | translate) }}
-            </button>
-            <button (click)="toggleInviteForm()"
-              class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
-              {{ 'common.cancel' | translate }}
-            </button>
-          </div>
-          @if (inviteMessage()) {
-            <p [class]="inviteState() === 'error' ? 'text-sm text-red-400' : 'text-sm text-green-400'">
-              {{ inviteMessage() }}
+
+          @if (inviteStep() === 'form') {
+            <div class="flex gap-2">
+              <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
+                (keydown.enter)="generateInvite()"
+                class="flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
+                       text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
+                       focus:outline-none focus:ring-1 focus:ring-[hsl(var(--tenant-primary))]"
+                placeholder="client@example.com" />
+              <button (click)="generateInvite()" [disabled]="inviteState() === 'sending'"
+                class="rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
+                       text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))]
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {{ inviteState() === 'sending' ? ('invite.generating' | translate) : ('invite.generate' | translate) }}
+              </button>
+              <button (click)="toggleInviteForm()"
+                class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+                {{ 'common.cancel' | translate }}
+              </button>
+            </div>
+            @if (inviteState() === 'error' && inviteMessage()) {
+              <p class="text-sm text-red-400">{{ inviteMessage() }}</p>
+            }
+          }
+
+          @if (inviteStep() === 'ready') {
+            <p class="text-xs text-neutral-400">
+              Invite ready for <span class="text-neutral-200 font-medium">{{ inviteEmail() }}</span>
             </p>
+            <div class="flex gap-2">
+              <button (click)="shareInvite()"
+                class="flex-1 rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
+                       text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))] transition-colors">
+                {{ 'invite.share' | translate }}
+              </button>
+              <button (click)="resetInviteForm()"
+                class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+                {{ 'invite.another' | translate }}
+              </button>
+              <button (click)="toggleInviteForm()"
+                class="rounded-md px-3 py-2 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors">
+                {{ 'common.close' | translate }}
+              </button>
+            </div>
+            <p class="text-xs text-neutral-600">{{ 'invite.link.expiry' | translate }}</p>
           }
         </div>
       }
@@ -151,8 +174,10 @@ export class ClientRosterComponent implements OnInit {
   readonly inactiveExpanded = signal(false);
   readonly inviteFormOpen = signal(false);
   readonly inviteEmail = signal('');
-  readonly inviteState = signal<'idle' | 'sending' | 'success' | 'error'>('idle');
+  readonly inviteState = signal<'idle' | 'sending' | 'error'>('idle');
   readonly inviteMessage = signal<string | null>(null);
+  readonly inviteStep = signal<'form' | 'ready'>('form');
+  private inviteLink: string | null = null;
 
   readonly activeClients = computed(() => this.clients().filter(c => c.is_active));
   readonly inactiveClients = computed(() => this.clients().filter(c => !c.is_active));
@@ -174,12 +199,18 @@ export class ClientRosterComponent implements OnInit {
 
   toggleInviteForm(): void {
     this.inviteFormOpen.update(v => !v);
+    this.resetInviteForm();
+  }
+
+  resetInviteForm(): void {
     this.inviteEmail.set('');
     this.inviteState.set('idle');
     this.inviteMessage.set(null);
+    this.inviteStep.set('form');
+    this.inviteLink = null;
   }
 
-  async sendInvite(): Promise<void> {
+  async generateInvite(): Promise<void> {
     const email = this.inviteEmail().trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       this.inviteState.set('error');
@@ -188,14 +219,27 @@ export class ClientRosterComponent implements OnInit {
     }
     this.inviteState.set('sending');
     this.inviteMessage.set(null);
-    const { error } = await this.supabase.functions.invoke('invite-client', { body: { email } });
+    const { data, error } = await this.supabase.functions.invoke('invite-client', { body: { email } });
     if (error) {
       this.inviteState.set('error');
-      this.inviteMessage.set(error.message ?? 'Failed to send invite.');
+      this.inviteMessage.set(error.message ?? 'Failed to generate invite.');
     } else {
-      this.inviteState.set('success');
-      this.inviteMessage.set(`Invite sent to ${email}`);
-      this.inviteEmail.set('');
+      this.inviteLink = data?.inviteLink ?? null;
+      this.inviteStep.set('ready');
+    }
+  }
+
+  async shareInvite(): Promise<void> {
+    if (!this.inviteLink) return;
+    const shareData = {
+      title: 'Gym Planificación — Invitation',
+      text: `You've been invited to join Gym Planificación! Tap the link to set up your account.`,
+      url: this.inviteLink,
+    };
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await navigator.clipboard.writeText(this.inviteLink);
     }
   }
   openSheet(client: Profile): void { this.selectedClient.set(client); }
