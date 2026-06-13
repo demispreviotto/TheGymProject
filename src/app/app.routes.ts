@@ -13,6 +13,11 @@ export const routes: Routes = [
       import('../features/auth/register/register.component').then(m => m.RegisterComponent),
   },
   {
+    path: 'accept-invite',
+    loadComponent: () =>
+      import('../features/auth/accept-invite/accept-invite.component').then(m => m.AcceptInviteComponent),
+  },
+  {
     path: 'reset-password',
     loadComponent: () =>
       import('../features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),

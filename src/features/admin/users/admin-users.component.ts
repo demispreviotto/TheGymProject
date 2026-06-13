@@ -69,7 +69,7 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
             </p>
             <div class="flex gap-2">
               <button (click)="shareInvite()"
-                class="flex-1 rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
+                class="rounded-md bg-[hsl(var(--tenant-primary))] px-4 py-2 text-sm font-medium
                        text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))] transition-colors">
                 {{ 'invite.share' | translate }}
               </button>

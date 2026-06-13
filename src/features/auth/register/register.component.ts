@@ -116,6 +116,13 @@ export class RegisterComponent implements OnInit, OnDestroy {
   private expiredTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
+    // Detect error in URL hash immediately (e.g. otp_expired, access_denied)
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hash.get('error')) {
+      this.state.set('expired');
+      return;
+    }
+
     const { data: { subscription } } = this.supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         this.userId = session.user.id;
