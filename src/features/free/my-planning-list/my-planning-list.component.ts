@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlanningService } from '../../../core/planning/planning.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { Planning } from '../../../core/planning/planning.types';
@@ -37,9 +38,20 @@ import type { Planning } from '../../../core/planning/planning.types';
         <div class="rounded-lg border border-neutral-800 overflow-hidden">
           @for (plan of service.plannings(); track plan.id) {
             <div class="border-b border-neutral-800 last:border-0">
-              <div class="flex items-center gap-4 px-4 py-3 hover:bg-neutral-900 transition-colors">
+              <div
+                (click)="router.navigate(['/my-plan/planning', plan.id])"
+                class="flex items-center gap-4 px-4 py-3 hover:bg-neutral-900 transition-colors cursor-pointer"
+              >
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-neutral-100 truncate">{{ plan.title }}</p>
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-medium text-neutral-100 truncate">{{ plan.title }}</p>
+                    @if (isActivePlan(plan.id)) {
+                      <span class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded
+                                   bg-[hsl(var(--tenant-primary))]/15 text-[hsl(var(--tenant-primary))]">
+                        Active
+                      </span>
+                    }
+                  </div>
                   <p class="text-xs text-neutral-500 mt-0.5">
                     {{ plan.use_auto_1rm ? ('planning.autorm' | translate) : ('planning.fixed' | translate) }}
                     · {{ 'planning.created' | translate }} {{ formatDate(plan.created_at) }}
@@ -48,7 +60,15 @@ import type { Planning } from '../../../core/planning/planning.types';
                     }
                   </p>
                 </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
+                <div class="flex items-center gap-1 flex-shrink-0" (click)="$event.stopPropagation()">
+                  <!-- Set as active plan -->
+                  <button
+                    (click)="setActivePlan(plan)"
+                    [class]="activePlanButtonClass(plan.id)"
+                    title="Set as active plan"
+                  >
+                    <app-icon name="check" iconClass="w-4 h-4" />
+                  </button>
                   <!-- Friend-share toggle -->
                   <button
                     (click)="toggleSharePanel(plan.id)"
@@ -98,9 +118,13 @@ import type { Planning } from '../../../core/planning/planning.types';
 })
 export class MyPlanningListComponent implements OnInit {
   readonly service = inject(PlanningService);
+  readonly auth = inject(AuthService);
   readonly router = inject(Router);
 
   readonly activePanelId = signal<string | null>(null);
+  readonly settingActiveId = signal<string | null>(null);
+
+  readonly activePlanId = computed(() => this.auth.profile()?.assigned_planning_id ?? null);
 
   ngOnInit(): void { this.service.loadPlannings(); }
 
@@ -110,6 +134,27 @@ export class MyPlanningListComponent implements OnInit {
 
   toggleSharePanel(id: string): void {
     this.activePanelId.update(v => v === id ? null : id);
+  }
+
+  isActivePlan(id: string): boolean {
+    return this.activePlanId() === id;
+  }
+
+  activePlanButtonClass(id: string): string {
+    const base = 'p-1.5 rounded-md transition-colors';
+    return this.isActivePlan(id)
+      ? `${base} text-[hsl(var(--tenant-primary))] bg-[hsl(var(--tenant-primary))]/10`
+      : `${base} text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800`;
+  }
+
+  async setActivePlan(plan: Planning): Promise<void> {
+    const userId = this.auth.profile()?.id;
+    if (!userId) return;
+    const newId = this.isActivePlan(plan.id) ? null : plan.id;
+    this.settingActiveId.set(plan.id);
+    await this.service.assignPlanning(userId, newId);
+    await this.auth.refreshProfile();
+    this.settingActiveId.set(null);
   }
 
   shareButtonClass(plan: Planning): string {
