@@ -107,7 +107,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const inviteData = { user: linkData.user };
-    const inviteLink = linkData.properties.action_link;
+    // Wrap the raw Supabase link behind /accept-invite so messaging app link-preview
+    // fetches don't consume the one-time token before the user clicks.
+    const rawLink = linkData.properties.action_link;
+    const inviteLink = `${siteUrl}/accept-invite?link=${encodeURIComponent(rawLink)}`;
 
     // Step 2: Set app_metadata (server-controlled, not user-editable)
     await adminClient.auth.admin.updateUserById(inviteData.user.id, {
