@@ -34,15 +34,32 @@ export class FriendshipService {
   });
 
   async load(): Promise<void> {
-    const { data } = await this.supabase
+    const { data: rows } = await this.supabase
       .from('friendships')
-      .select(`
-        *,
-        requester:profiles!requester_id(name, email),
-        addressee:profiles!addressee_id(name, email)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
-    this.friendships.set((data as Friendship[]) ?? []);
+
+    if (!rows?.length) { this.friendships.set([]); return; }
+
+    const ids = [...new Set([
+      ...rows.map((r: Friendship) => r.requester_id),
+      ...rows.map((r: Friendship) => r.addressee_id),
+    ])];
+
+    const { data: profiles } = await this.supabase
+      .from('profiles')
+      .select('id, name, email')
+      .in('id', ids);
+
+    const byId = Object.fromEntries(
+      ((profiles ?? []) as { id: string; name: string; email: string }[]).map(p => [p.id, p]),
+    );
+
+    this.friendships.set(rows.map((r: Friendship) => ({
+      ...r,
+      requester: byId[r.requester_id],
+      addressee: byId[r.addressee_id],
+    })));
   }
 
   async sendRequest(email: string): Promise<string | null> {

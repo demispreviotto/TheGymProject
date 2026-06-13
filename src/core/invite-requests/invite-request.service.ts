@@ -45,12 +45,31 @@ export class InviteRequestService {
   }
 
   async loadAllRequests(): Promise<void> {
-    const { data } = await this.supabase
+    const { data: requests, error: reqErr } = await this.supabase
       .from('invite_requests')
-      .select('*, requester:profiles!requester_id(name, email)')
+      .select('*')
       .order('status')
       .order('created_at', { ascending: false });
-    this.allRequests.set((data as InviteRequest[]) ?? []);
+
+    console.log('[InviteReq] requests:', requests, 'error:', reqErr);
+
+    if (!requests?.length) { this.allRequests.set([]); return; }
+
+    const requesterIds = [...new Set(requests.map((r: InviteRequest) => r.requester_id))];
+    const { data: profiles, error: profErr } = await this.supabase
+      .from('profiles')
+      .select('id, name, email')
+      .in('id', requesterIds);
+
+    console.log('[InviteReq] profiles for', requesterIds, ':', profiles, 'error:', profErr);
+
+    const byId = Object.fromEntries(
+      ((profiles ?? []) as { id: string; name: string; email: string }[]).map(p => [p.id, p]),
+    );
+
+    this.allRequests.set(
+      requests.map((r: InviteRequest) => ({ ...r, requester: byId[r.requester_id] })),
+    );
   }
 
   async submitRequest(

@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkoutService, WorkoutPlanFull, WorkoutPrescribed, LogPayload } from '../../../core/workout/workout.service';
 import { PlanningService } from '../../../core/planning/planning.service';
@@ -46,31 +47,55 @@ interface WorkoutRowState {
           <p class="text-sm text-neutral-400 max-w-[280px]">{{ 'dashboard.noplan.body' | translate }}</p>
         </div>
 
-        <!-- Plan ID connect -->
-        <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
-          <div>
-            <p class="text-sm font-medium text-neutral-100">{{ 'dashboard.connect.title' | translate }}</p>
-            <p class="text-xs text-neutral-500 mt-0.5">{{ 'dashboard.connect.hint' | translate }}</p>
+        @if (isSelfManagedUser()) {
+          <!-- Free / admin: own plans -->
+          <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+            @if (planningService.plannings().length > 0) {
+              <p class="text-sm font-medium text-neutral-100">You have {{ planningService.plannings().length }} plan(s). Set one as active to start training.</p>
+              <button
+                (click)="router.navigate(['/my-plan/planning'])"
+                class="w-full py-2.5 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Go to my plans
+              </button>
+            } @else {
+              <p class="text-sm font-medium text-neutral-100">You don't have any plans yet.</p>
+              <p class="text-xs text-neutral-500">Create your first plan to start tracking workouts.</p>
+              <button
+                (click)="router.navigate(['/my-plan/planning/new'])"
+                class="w-full py-2.5 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Create a plan
+              </button>
+            }
           </div>
-          <div class="flex gap-2">
-            <input
-              type="text"
-              [(ngModel)]="connectInput"
-              [placeholder]="'dashboard.connect.placeholder' | translate"
-              class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
-            />
-            <button
-              (click)="connectPlan()"
-              [attr.disabled]="connectLoading() ? '' : null"
-              class="px-4 py-2 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 whitespace-nowrap"
-            >
-              {{ connectLoading() ? ('dashboard.connect.connecting' | translate) : ('dashboard.connect.button' | translate) }}
-            </button>
+        } @else {
+          <!-- Trainer-assigned user: connect by shared plan ID -->
+          <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+            <div>
+              <p class="text-sm font-medium text-neutral-100">{{ 'dashboard.connect.title' | translate }}</p>
+              <p class="text-xs text-neutral-500 mt-0.5">{{ 'dashboard.connect.hint' | translate }}</p>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                [(ngModel)]="connectInput"
+                [placeholder]="'dashboard.connect.placeholder' | translate"
+                class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
+              />
+              <button
+                (click)="connectPlan()"
+                [attr.disabled]="connectLoading() ? '' : null"
+                class="px-4 py-2 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 whitespace-nowrap"
+              >
+                {{ connectLoading() ? ('dashboard.connect.connecting' | translate) : ('dashboard.connect.button' | translate) }}
+              </button>
+            </div>
+            @if (connectError()) {
+              <p class="text-xs text-red-400">{{ connectError()! | translate }}</p>
+            }
           </div>
-          @if (connectError()) {
-            <p class="text-xs text-red-400">{{ connectError()! | translate }}</p>
-          }
-        </div>
+        }
 
       } @else if (rows().length > 0) {
         <div class="mb-5">
@@ -229,8 +254,9 @@ interface WorkoutRowState {
 export class WorkoutDashboardComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly workoutService = inject(WorkoutService);
-  private readonly planningService = inject(PlanningService);
+  readonly planningService = inject(PlanningService);
   private readonly supabase = inject(SUPABASE_CLIENT);
+  readonly router = inject(Router);
 
   readonly loading = signal(true);
   readonly plan = signal<WorkoutPlanFull | null>(null);
@@ -242,6 +268,10 @@ export class WorkoutDashboardComponent implements OnInit {
   readonly saveError = signal<string | null>(null);
 
   readonly assignedPlanId = computed(() => this.auth.profile()?.assigned_planning_id ?? null);
+  readonly isSelfManagedUser = computed(() => {
+    const role = this.auth.profile()?.role;
+    return role === 'free' || role === 'admin';
+  });
 
   readonly skeletons = [1, 2, 3];
   readonly stars = [1, 2, 3, 4, 5];
@@ -252,6 +282,9 @@ export class WorkoutDashboardComponent implements OnInit {
   readonly connectError = signal<string | null>(null);
 
   async ngOnInit(): Promise<void> {
+    if (this.isSelfManagedUser()) {
+      this.planningService.loadPlannings();
+    }
     await this.loadWorkout();
   }
 
