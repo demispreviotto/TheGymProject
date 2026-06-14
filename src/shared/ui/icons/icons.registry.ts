@@ -21,8 +21,10 @@ import { eyeSlash } from './svg/eye-slash';
 import { listNumbers } from './svg/list-numbers';
 import { lockClosed } from './svg/lock-closed';
 import { lockOpen } from './svg/lock-open';
+import { pencil } from './svg/pencil';
 import { plus } from './svg/plus';
 import { share } from './svg/share';
+import { trash } from './svg/trash';
 import { shieldSlash } from './svg/shield-slash';
 import { spinner } from './svg/spinner';
 import { star } from './svg/star';
@@ -50,8 +52,10 @@ export const ICONS = {
   'list-numbers': listNumbers,
   'lock-closed': lockClosed,
   'lock-open': lockOpen,
+  'pencil': pencil,
   'plus': plus,
   'share': share,
+  'trash': trash,
   'shield-slash': shieldSlash,
   'spinner': spinner,
   'star': star,

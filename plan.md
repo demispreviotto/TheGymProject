@@ -277,6 +277,28 @@ In Supabase Studio → `profiles` table → find your row → set `role = 'admin
 
 ---
 
+## Shared UI: IconButtonComponent
+**Status: ✅ COMPLETE (local)**
+
+### Component
+- **`IconButtonComponent`** (`shared/ui/button/icon-button.component.ts`) — reusable icon+label button that replaces raw `<button>` + `<app-icon>` combos throughout the app.
+- Inputs: `icon` (IconName, required), `label` (string), `variant`, `size`, `disabled`, `class`, `labelMode`.
+- `labelMode` controls label visibility:
+  - `"always"` (default) — icon + label always visible
+  - `"never"` — icon only; pair with `size="icon"` for square shape
+  - `"responsive"` — icon only on mobile (`<sm`), icon + label on `sm+`
+- Inherits all CVA variants and sizes from `HlmButtonDirective` (`ghost`, `destructive`, `outline`, etc.).
+- **DRY rule:** any action button that has an icon (Edit, Delete, Share, Add, etc.) must use `IconButtonComponent` instead of a bespoke `<button>`.
+
+### Icons added to registry
+- **`pencil`** (`shared/ui/icons/svg/pencil.ts`) — edit actions
+- **`trash`** (`shared/ui/icons/svg/trash.ts`) — delete actions
+
+### First usage
+- My Plans list (`features/free/my-planning-list/`) — Edit and Delete buttons use `labelMode="responsive"`; Share toggle icon updated from `user-group` to `share`.
+
+---
+
 ## Phase 9: Corporate Gym & Organization Tier
 **Status: 🗺 Conceptual — not scheduled**
 

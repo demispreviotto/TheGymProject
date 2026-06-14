@@ -5,13 +5,14 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
+import { IconButtonComponent } from '../../../shared/ui/button/icon-button.component';
 import type { Planning } from '../../../core/planning/planning.types';
 
 @Component({
   selector: 'app-my-planning-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, AppIconComponent],
+  imports: [TranslatePipe, AppIconComponent, IconButtonComponent],
   template: `
     <div class="space-y-4">
 
@@ -83,20 +84,25 @@ import type { Planning } from '../../../core/planning/planning.types';
                       [class]="shareButtonClass(plan)"
                       [title]="'myplan.share.friends' | translate"
                     >
-                      <app-icon name="user-group" />
+                      <app-icon name="share" />
                     </button>
-                    <button
+                    <app-icon-button
+                      icon="pencil"
+                      [label]="'common.edit' | translate"
+                      labelMode="responsive"
+                      variant="ghost"
+                      size="sm"
                       (click)="router.navigate(['/my-plan/planning', plan.id])"
-                      class="text-xs text-neutral-400 hover:text-neutral-100 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
-                    >
-                      {{ 'common.edit' | translate }}
-                    </button>
-                    <button
+                    />
+                    <app-icon-button
+                      icon="trash"
+                      [label]="'common.delete' | translate"
+                      labelMode="responsive"
+                      variant="ghost"
+                      size="sm"
+                      class="text-neutral-400 hover:text-red-400"
                       (click)="confirmDelete(plan)"
-                      class="text-xs text-neutral-400 hover:text-red-400 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
-                    >
-                      {{ 'common.delete' | translate }}
-                    </button>
+                    />
                   }
                 </div>
               </div>
