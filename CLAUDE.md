@@ -318,7 +318,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `admin/users/admin-users.component.ts` | `/admin/users` | admin |
 | `free/my-plan-shell/my-plan-shell.component.ts` | `/my-plan` (bare router-outlet) | free · admin |
 | `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only) |
-| `free/my-exercise-list/my-exercise-list.component.ts` | `/my-plan/exercises` | free · admin |
+| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/my-plan/exercises` | free · admin — same component as trainer route; receives `titleKey='myplan.exercises.title'` and `newRoute='/my-plan/exercises/new'` via route `data` (bound via `withComponentInputBinding`) |
 | `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
 
 ### Shared UI (`src/shared/`)
@@ -334,6 +334,18 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `TranslatePipe` | `shared/pipes/translate.pipe.ts` | impure pipe — `\| translate` resolves key via `LanguageService` |
 | `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name (reads from `auth.tenant()`) |
 | `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast; mounted once in AppShell; driven by `CountdownTimerService` signals |
+| `EmptyStateComponent` | `shared/components/empty-state/` | component — centered empty placeholder. Inputs: `message` (string, required), `hint` (string, optional). Use whenever a list or section has no items. |
+| `SkeletonComponent` | `shared/components/skeleton/` | component — animated loading pulse rows. Inputs: `count` (number, default `3`), `itemClass` (string, default `'h-14'`). Use instead of inline `@for` animate-pulse blocks. |
+| `ToggleComponent` | `shared/components/toggle/` | component — accessible boolean switch styled with tenant primary color. Inputs: `active` (boolean, required). Output: `changed` (boolean). Replaces inline `role="switch"` buttons with class-mapping methods. |
+| `PageHeaderComponent` | `shared/components/page-header/` | component — standardised page title + subtitle row with `ng-content` slot for the action button. Inputs: `title` (string, required), `subtitle` (string, optional). Use at the top of every list/admin page. |
+
+### Shared Utilities (`src/shared/utils/`)
+| Export | File | Purpose |
+|--------|------|---------|
+| `formatDate(iso)` | `shared/utils/format.ts` | Formats an ISO date string to locale short date (`Jan 1, 2026`). Use everywhere a date is displayed — never inline `toLocaleDateString`. |
+| `shareOrCopy(url, title, text)` | `shared/utils/share.ts` | Uses `navigator.share` if available, falls back to `navigator.clipboard.writeText`. Use for all invite/share flows. |
+| `copyWithTimeout(value, setter, ms?)` | `shared/utils/share.ts` | Copies `value` to clipboard, calls `setter(value)` immediately and `setter(null)` after `ms` (default 2000). Use for copy-ID buttons that show a transient "Copied" label. |
+| `isValidEmail(email)` | `shared/utils/validators.ts` | Returns `true` if the string matches a basic email pattern. Use before calling invite edge functions. |
 
 ---
 

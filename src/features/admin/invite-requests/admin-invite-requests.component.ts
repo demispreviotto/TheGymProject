@@ -3,13 +3,14 @@ import {
 } from '@angular/core';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import type { InviteRequest } from '../../../core/invite-requests/invite-request.service';
 
 @Component({
   selector: 'app-admin-invite-requests',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, SkeletonComponent],
   template: `
     <div>
       <div class="flex items-center justify-between mb-6">
@@ -22,11 +23,7 @@ import type { InviteRequest } from '../../../core/invite-requests/invite-request
       </div>
 
       @if (loading()) {
-        <div class="space-y-2">
-          @for (_ of [1, 2, 3]; track $index) {
-            <div class="h-20 rounded-lg bg-neutral-800 animate-pulse"></div>
-          }
-        </div>
+        <app-skeleton [count]="3" itemClass="h-20" />
       } @else if (inviteService.allRequests().length === 0) {
         <p class="text-sm text-neutral-500">{{ 'admin.requests.empty' | translate }}</p>
       } @else {

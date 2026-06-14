@@ -147,10 +147,11 @@ export const routes: Routes = [
           },
           {
             path: 'exercises',
+            data: { titleKey: 'myplan.exercises.title', newRoute: '/my-plan/exercises/new' },
             loadComponent: () =>
-              import('../features/free/my-exercise-list/my-exercise-list.component').then(
-                m => m.MyExerciseListComponent,
-              ),
+              import(
+                '../features/trainer/exercises/exercise-list/exercise-list.component'
+              ).then(m => m.ExerciseListComponent),
           },
           {
             path: 'exercises/new',

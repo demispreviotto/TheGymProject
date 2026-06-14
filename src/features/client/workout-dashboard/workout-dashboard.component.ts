@@ -82,7 +82,7 @@ interface WorkoutRowState {
                 type="text"
                 [(ngModel)]="connectInput"
                 [placeholder]="'dashboard.connect.placeholder' | translate"
-                class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
+                class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
               />
               <button
                 (click)="connectPlan()"
@@ -177,7 +177,7 @@ interface WorkoutRowState {
                         (input)="updateInput(i, r, 'weight', $event)"
                         [attr.disabled]="row.isCompleted ? '' : null"
                         placeholder="kg"
-                        class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
+                        class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
                       />
                       <input
                         type="number" min="0"
@@ -185,7 +185,7 @@ interface WorkoutRowState {
                         (input)="updateInput(i, r, 'reps', $event)"
                         [attr.disabled]="row.isCompleted ? '' : null"
                         placeholder="reps"
-                        class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
+                        class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
                       />
                     </div>
                   }

@@ -45,6 +45,7 @@ import type { Exercise, MuscleGroup } from '../../../../core/planning/planning.t
             <label class="text-sm font-medium text-neutral-300">Name</label>
             <input
               type="text"
+              name="ex-name"
               [value]="name()"
               (input)="name.set(asString($event))"
               [attr.disabled]="!unlocked() || isGlobal() ? '' : null"
@@ -57,6 +58,7 @@ import type { Exercise, MuscleGroup } from '../../../../core/planning/planning.t
             <label class="text-sm font-medium text-neutral-300">Definition</label>
             <textarea
               rows="3"
+              name="ex-definition"
               [value]="definition()"
               (input)="definition.set(asString($event))"
               [attr.disabled]="!unlocked() || isGlobal() ? '' : null"
@@ -69,6 +71,7 @@ import type { Exercise, MuscleGroup } from '../../../../core/planning/planning.t
             <label class="text-sm font-medium text-neutral-300">Recommendations</label>
             <textarea
               rows="3"
+              name="ex-recommendations"
               [value]="recommendations()"
               (input)="recommendations.set(asString($event))"
               [attr.disabled]="!unlocked() || isGlobal() ? '' : null"
