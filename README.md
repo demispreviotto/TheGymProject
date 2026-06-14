@@ -218,3 +218,4 @@ supabase/
     invite-client/        # Generates invite links for trainers and admins
   seed.sql                # Local dev seed data
 ```
+.
