@@ -6,13 +6,16 @@ import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import { IconButtonComponent } from '../../../shared/ui/button/icon-button.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ToggleComponent } from '../../../shared/components/toggle/toggle.component';
+import { formatDate } from '../../../shared/utils/format';
 import type { Planning } from '../../../core/planning/planning.types';
 
 @Component({
   selector: 'app-my-planning-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, AppIconComponent, IconButtonComponent],
+  imports: [TranslatePipe, AppIconComponent, IconButtonComponent, EmptyStateComponent, ToggleComponent],
   template: `
     <div class="space-y-4">
 
@@ -32,10 +35,10 @@ import type { Planning } from '../../../core/planning/planning.types';
       @if (service.loading()) {
         <p class="text-sm text-neutral-500">{{ 'common.loading' | translate }}</p>
       } @else if (service.plannings().length === 0) {
-        <div class="text-center py-16 text-neutral-600">
-          <p class="text-sm">{{ 'planning.empty' | translate }}</p>
-          <p class="text-xs mt-1">{{ 'myplan.planning.empty.hint' | translate }}</p>
-        </div>
+        <app-empty-state
+          [message]="'planning.empty' | translate"
+          [hint]="'myplan.planning.empty.hint' | translate"
+        />
       } @else {
         <div class="rounded-lg border border-neutral-800 overflow-hidden">
           @for (plan of service.plannings(); track plan.id) {
@@ -69,7 +72,6 @@ import type { Planning } from '../../../core/planning/planning.types';
                   </p>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0" (click)="$event.stopPropagation()">
-                  <!-- Set as active plan (available for all plans including shared) -->
                   <button
                     (click)="setActivePlan(plan)"
                     [class]="activePlanButtonClass(plan.id)"
@@ -78,7 +80,6 @@ import type { Planning } from '../../../core/planning/planning.types';
                     <app-icon name="check" iconClass="w-4 h-4" />
                   </button>
                   @if (isOwned(plan)) {
-                    <!-- Friend-share toggle (owned only) -->
                     <button
                       (click)="toggleSharePanel(plan.id)"
                       [class]="shareButtonClass(plan)"
@@ -107,20 +108,15 @@ import type { Planning } from '../../../core/planning/planning.types';
                 </div>
               </div>
 
-              <!-- Inline friend-share panel (owned plans only) -->
               @if (isOwned(plan) && activePanelId() === plan.id) {
                 <div class="px-4 pb-4 pt-1 border-t border-neutral-800 bg-neutral-900/50 space-y-3">
                   <p class="text-xs text-neutral-500">{{ 'myplan.share.friends.hint' | translate }}</p>
                   <div class="flex items-center justify-between">
                     <span class="text-xs text-neutral-400">{{ 'myplan.share.friends' | translate }}</span>
-                    <button
-                      (click)="toggleSharedWithFriends(plan)"
-                      [class]="sharedToggleClass(plan.is_shared_with_friends)"
-                      role="switch"
-                      [attr.aria-checked]="plan.is_shared_with_friends"
-                    >
-                      <span [class]="sharedThumbClass(plan.is_shared_with_friends)"></span>
-                    </button>
+                    <app-toggle
+                      [active]="plan.is_shared_with_friends"
+                      (changed)="toggleSharedWithFriends(plan)"
+                    />
                   </div>
                 </div>
               }
@@ -142,6 +138,8 @@ export class MyPlanningListComponent implements OnInit {
   readonly ownerNames = signal<Map<string, string>>(new Map());
 
   readonly activePlanId = computed(() => this.auth.profile()?.assigned_planning_id ?? null);
+
+  readonly formatDate = formatDate;
 
   async ngOnInit(): Promise<void> {
     await this.service.loadPlannings();
@@ -177,10 +175,6 @@ export class MyPlanningListComponent implements OnInit {
     return plan.tenant_id === this.auth.profile()?.id;
   }
 
-  formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString();
-  }
-
   toggleSharePanel(id: string): void {
     this.activePanelId.update(v => v === id ? null : id);
   }
@@ -211,16 +205,6 @@ export class MyPlanningListComponent implements OnInit {
     return plan.is_shared_with_friends
       ? `${base} text-[hsl(var(--tenant-primary))] bg-[hsl(var(--tenant-primary))]/10`
       : `${base} text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800`;
-  }
-
-  sharedToggleClass(active: boolean): string {
-    const base = 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none';
-    return active ? `${base} bg-[hsl(var(--tenant-primary))]` : `${base} bg-neutral-700`;
-  }
-
-  sharedThumbClass(active: boolean): string {
-    const base = 'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform';
-    return active ? `${base} translate-x-4` : `${base} translate-x-1`;
   }
 
   async toggleSharedWithFriends(plan: Planning): Promise<void> {

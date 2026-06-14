@@ -93,24 +93,24 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
               } @else {
                 <div class="space-y-1.5">
                   <label class="text-xs font-medium text-neutral-400">{{ 'invite.friends.name' | translate }}</label>
-                  <input type="text" [ngModel]="inviteeName()" (ngModelChange)="inviteeName.set($event)"
+                  <input type="text" name="invitee-name" [ngModel]="inviteeName()" (ngModelChange)="inviteeName.set($event)"
                     class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500"
                     placeholder="Their full name" />
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-medium text-neutral-400">{{ 'invite.email' | translate }}</label>
-                  <input type="email" [ngModel]="inviteeEmail()" (ngModelChange)="inviteeEmail.set($event)"
+                  <input type="email" name="invitee-email" [ngModel]="inviteeEmail()" (ngModelChange)="inviteeEmail.set($event)"
                     class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500"
                     placeholder="their@email.com" />
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-medium text-neutral-400">{{ 'invite.friends.reason' | translate }}</label>
-                  <textarea rows="2" [ngModel]="inviteeReason()" (ngModelChange)="inviteeReason.set($event)"
+                  <textarea rows="2" name="invitee-reason" [ngModel]="inviteeReason()" (ngModelChange)="inviteeReason.set($event)"
                     class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-300 resize-none focus:outline-none focus:border-neutral-500"
                     placeholder="e.g. my training partner"></textarea>
                 </div>
                 <label class="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" [ngModel]="inviteAccepted()" (ngModelChange)="inviteAccepted.set($event)"
+                  <input type="checkbox" name="invite-accepted" [ngModel]="inviteAccepted()" (ngModelChange)="inviteAccepted.set($event)"
                     class="mt-0.5 accent-[hsl(var(--tenant-primary))]" />
                   <span class="text-xs text-neutral-400">{{ 'invite.friends.responsibility' | translate }}</span>
                 </label>
@@ -179,6 +179,7 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
                 <label class="text-xs font-medium text-neutral-400">{{ 'branding.gymname' | translate }}</label>
                 <input
                   type="text"
+                  name="brand-name"
                   [(ngModel)]="brandName"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500"
                 />
@@ -190,6 +191,7 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
                 <div class="flex gap-3 items-center">
                   <input
                     type="text"
+                    name="brand-hex"
                     [(ngModel)]="brandHex"
                     (ngModelChange)="onHexChange($event)"
                     placeholder="#EF4444"
@@ -211,6 +213,7 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
                 <p class="text-xs text-neutral-600">{{ 'branding.logo.hint' | translate }}</p>
                 <textarea
                   rows="4"
+                  name="brand-logo"
                   [(ngModel)]="brandLogo"
                   placeholder="<svg ...>...</svg>"
                   class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-neutral-300 font-mono focus:outline-none focus:border-neutral-500 resize-none"

@@ -8,13 +8,17 @@ import { ClientDetailSheetComponent } from '../client-detail-sheet/client-detail
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
+import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
+import { formatDate } from '../../../../shared/utils/format';
+import { shareOrCopy } from '../../../../shared/utils/share';
+import { isValidEmail } from '../../../../shared/utils/validators';
 import type { Profile } from '../../../../core/auth/auth.types';
 
 @Component({
   selector: 'app-client-roster',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClientDetailSheetComponent, TranslatePipe, FormsModule, AppIconComponent],
+  imports: [ClientDetailSheetComponent, TranslatePipe, FormsModule, AppIconComponent, SkeletonComponent],
   template: `
     <div>
       <div class="flex items-center justify-between mb-6">
@@ -36,7 +40,7 @@ import type { Profile } from '../../../../core/auth/auth.types';
 
           @if (inviteStep() === 'form') {
             <div class="flex gap-2">
-              <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
+              <input type="email" name="invite-email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
                 (keydown.enter)="generateInvite()"
                 class="flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
                        text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
@@ -83,11 +87,7 @@ import type { Profile } from '../../../../core/auth/auth.types';
       }
 
       @if (loading()) {
-        <div class="space-y-2">
-          @for (_ of [1, 2, 3]; track $index) {
-            <div class="h-14 rounded-lg bg-neutral-800 animate-pulse"></div>
-          }
-        </div>
+        <app-skeleton />
       } @else {
 
         @if (activeClients().length > 0) {
@@ -191,9 +191,7 @@ export class ClientRosterComponent implements OnInit {
     return this.planningService.plannings().find(p => p.id === planId)?.title ?? '—';
   }
 
-  formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-  }
+  readonly formatDate = formatDate;
 
   toggleInactive(): void { this.inactiveExpanded.update(v => !v); }
 
@@ -212,7 +210,7 @@ export class ClientRosterComponent implements OnInit {
 
   async generateInvite(): Promise<void> {
     const email = this.inviteEmail().trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidEmail(email)) {
       this.inviteState.set('error');
       this.inviteMessage.set('Enter a valid email address.');
       return;
@@ -231,16 +229,11 @@ export class ClientRosterComponent implements OnInit {
 
   async shareInvite(): Promise<void> {
     if (!this.inviteLink) return;
-    const shareData = {
-      title: 'Gym Planificación — Invitation',
-      text: `You've been invited to join Gym Planificación! Tap the link to set up your account.`,
-      url: this.inviteLink,
-    };
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(this.inviteLink);
-    }
+    await shareOrCopy(
+      this.inviteLink,
+      'Gym Planificación — Invitation',
+      `You've been invited to join Gym Planificación! Tap the link to set up your account.`,
+    );
   }
   openSheet(client: Profile): void { this.selectedClient.set(client); }
   closeSheet(): void { this.selectedClient.set(null); }

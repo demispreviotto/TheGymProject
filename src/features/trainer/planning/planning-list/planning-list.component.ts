@@ -3,13 +3,17 @@ import { Router } from '@angular/router';
 import { PlanningService } from '../../../../core/planning/planning.service';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ToggleComponent } from '../../../../shared/components/toggle/toggle.component';
+import { formatDate } from '../../../../shared/utils/format';
+import { copyWithTimeout } from '../../../../shared/utils/share';
 import type { Planning } from '../../../../core/planning/planning.types';
 
 @Component({
   selector: 'app-planning-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, AppIconComponent],
+  imports: [TranslatePipe, AppIconComponent, EmptyStateComponent, ToggleComponent],
   template: `
     <div class="space-y-4">
 
@@ -29,10 +33,10 @@ import type { Planning } from '../../../../core/planning/planning.types';
       @if (service.loading()) {
         <p class="text-sm text-neutral-500">{{ 'common.loading' | translate }}</p>
       } @else if (service.plannings().length === 0) {
-        <div class="text-center py-16 text-neutral-600">
-          <p class="text-sm">{{ 'planning.empty' | translate }}</p>
-          <p class="text-xs mt-1">{{ 'planning.empty.hint' | translate }}</p>
-        </div>
+        <app-empty-state
+          [message]="'planning.empty' | translate"
+          [hint]="'planning.empty.hint' | translate"
+        />
       } @else {
         <div class="rounded-lg border border-neutral-800 overflow-hidden">
           @for (plan of service.plannings(); track plan.id) {
@@ -46,7 +50,6 @@ import type { Planning } from '../../../../core/planning/planning.types';
                   </p>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                  <!-- Share toggle -->
                   <button
                     (click)="toggleSharePanel(plan.id)"
                     [class]="shareButtonClass(plan)"
@@ -57,26 +60,24 @@ import type { Planning } from '../../../../core/planning/planning.types';
                   <button
                     (click)="router.navigate(['/trainer/planning', plan.id])"
                     class="text-xs text-neutral-400 hover:text-neutral-100 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
-                  [title]="'common.edit' | translate"
+                    [title]="'common.edit' | translate"
                   >
-                  {{ 'common.edit' | translate }}
+                    {{ 'common.edit' | translate }}
                   </button>
                   <button
-                  (click)="confirmDelete(plan)"
-                  class="text-xs text-neutral-400 hover:text-red-400 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
-                  [title]="'common.delete' | translate"
+                    (click)="confirmDelete(plan)"
+                    class="text-xs text-neutral-400 hover:text-red-400 px-2 py-1 rounded hover:bg-neutral-800 transition-colors"
+                    [title]="'common.delete' | translate"
                   >
                     {{ 'common.delete' | translate }}
                   </button>
                 </div>
               </div>
 
-              <!-- Inline share panel -->
               @if (activePanelId() === plan.id) {
                 <div class="px-4 pb-4 pt-1 border-t border-neutral-800 bg-neutral-900/50 space-y-3">
                   <p class="text-xs text-neutral-500">{{ 'planning.share.hint' | translate }}</p>
 
-                  <!-- UUID copy field -->
                   <div class="flex gap-2">
                     <input
                       readonly
@@ -91,17 +92,12 @@ import type { Planning } from '../../../../core/planning/planning.types';
                     </button>
                   </div>
 
-                  <!-- Sharing toggle -->
                   <div class="flex items-center justify-between">
                     <span class="text-xs text-neutral-400">{{ 'planning.share.enable' | translate }}</span>
-                    <button
-                      (click)="toggleShared(plan)"
-                      [class]="sharedToggleClass(plan.is_shared_with_gym)"
-                      role="switch"
-                      [attr.aria-checked]="plan.is_shared_with_gym"
-                    >
-                      <span [class]="sharedThumbClass(plan.is_shared_with_gym)"></span>
-                    </button>
+                    <app-toggle
+                      [active]="plan.is_shared_with_gym"
+                      (changed)="toggleShared(plan)"
+                    />
                   </div>
                 </div>
               }
@@ -119,11 +115,9 @@ export class PlanningListComponent implements OnInit {
   readonly activePanelId = signal<string | null>(null);
   readonly copied = signal<string | null>(null);
 
-  ngOnInit(): void { this.service.loadPlannings(); }
+  readonly formatDate = formatDate;
 
-  formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString();
-  }
+  ngOnInit(): void { this.service.loadPlannings(); }
 
   toggleSharePanel(id: string): void {
     this.activePanelId.update(v => v === id ? null : id);
@@ -136,24 +130,12 @@ export class PlanningListComponent implements OnInit {
       : `${base} text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800`;
   }
 
-  sharedToggleClass(active: boolean): string {
-    const base = 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none';
-    return active ? `${base} bg-[hsl(var(--tenant-primary))]` : `${base} bg-neutral-700`;
-  }
-
-  sharedThumbClass(active: boolean): string {
-    const base = 'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform';
-    return active ? `${base} translate-x-4` : `${base} translate-x-1`;
-  }
-
   async toggleShared(plan: Planning): Promise<void> {
     await this.service.setShared(plan.id, !plan.is_shared_with_gym);
   }
 
   async copyId(id: string): Promise<void> {
-    await navigator.clipboard.writeText(id);
-    this.copied.set(id);
-    setTimeout(() => this.copied.set(null), 2000);
+    await copyWithTimeout(id, v => this.copied.set(v));
   }
 
   async confirmDelete(plan: Planning): Promise<void> {

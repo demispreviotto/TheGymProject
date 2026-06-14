@@ -1,30 +1,31 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy, computed, signal } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, computed, signal, input } from '@angular/core';
 import { Router } from '@angular/router';
+import { LowerCasePipe } from '@angular/common';
 import { ExerciseService } from '../../../../core/exercises/exercise.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ExerciseEditSheetComponent } from '../exercise-edit-sheet/exercise-edit-sheet.component';
-import { LowerCasePipe } from '@angular/common';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import type { Exercise } from '../../../../core/planning/planning.types';
 
 @Component({
   selector: 'app-exercise-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ExerciseEditSheetComponent, TranslatePipe, LowerCasePipe],
+  imports: [ExerciseEditSheetComponent, TranslatePipe, LowerCasePipe, EmptyStateComponent],
   template: `
     <div class="space-y-4">
 
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-xl font-semibold">{{ 'exercises.title' | translate }}</h1>
+          <h1 class="text-xl font-semibold">{{ titleKey() | translate }}</h1>
           <p class="text-sm text-neutral-400 mt-0.5">
-            {{ tenantExercises().length }} {{ 'exercises.library' | translate | lowercase }}
+            {{ ownedExercises().length }} {{ 'exercises.library' | translate | lowercase }}
             · {{ globalExercises().length }} {{ 'exercises.global' | translate | lowercase }}
           </p>
         </div>
         <button
-          (click)="router.navigate(['/trainer/exercises/new'])"
+          (click)="router.navigate([newRoute()])"
           class="px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
         >
           {{ 'exercises.new' | translate }}
@@ -35,13 +36,13 @@ import type { Exercise } from '../../../../core/planning/planning.types';
         <p class="text-sm text-neutral-500">{{ 'common.loading' | translate }}</p>
       } @else {
 
-        @if (tenantExercises().length > 0) {
+        @if (ownedExercises().length > 0) {
           <section class="space-y-2">
             <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500">
               {{ 'exercises.library' | translate }}
             </h2>
             <div class="rounded-lg border border-neutral-800 overflow-hidden">
-              @for (ex of tenantExercises(); track ex.id) {
+              @for (ex of ownedExercises(); track ex.id) {
                 <div class="flex items-center gap-4 px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-900 transition-colors">
                   <button class="flex-1 min-w-0 text-left" (click)="openSheet(ex)">
                     <p class="text-sm font-medium text-neutral-100 truncate">{{ ex.name }}</p>
@@ -90,10 +91,10 @@ import type { Exercise } from '../../../../core/planning/planning.types';
         }
 
         @if (service.exercises().length === 0) {
-          <div class="text-center py-16 text-neutral-600">
-            <p class="text-sm">{{ 'exercises.empty' | translate }}</p>
-            <p class="text-xs mt-1">{{ 'exercises.empty.hint' | translate }}</p>
-          </div>
+          <app-empty-state
+            [message]="'exercises.empty' | translate"
+            [hint]="'exercises.empty.hint' | translate"
+          />
         }
       }
     </div>
@@ -106,9 +107,12 @@ export class ExerciseListComponent implements OnInit {
   readonly router = inject(Router);
   private readonly auth = inject(AuthService);
 
+  readonly titleKey = input<string>('exercises.title');
+  readonly newRoute = input<string>('/trainer/exercises/new');
+
   readonly selectedExercise = signal<Exercise | null>(null);
 
-  readonly tenantExercises = computed<Exercise[]>(() =>
+  readonly ownedExercises = computed<Exercise[]>(() =>
     this.service.exercises().filter(e => e.tenant_id === this.auth.profile()?.id),
   );
   readonly globalExercises = computed<Exercise[]>(() =>

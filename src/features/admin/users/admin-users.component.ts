@@ -5,13 +5,18 @@ import { FormsModule } from '@angular/forms';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
+import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
+import { ToggleComponent } from '../../../shared/components/toggle/toggle.component';
+import { formatDate } from '../../../shared/utils/format';
+import { shareOrCopy } from '../../../shared/utils/share';
+import { isValidEmail } from '../../../shared/utils/validators';
 import type { Profile, UserRole } from '../../../core/auth/auth.types';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, AppIconComponent],
+  imports: [FormsModule, TranslatePipe, AppIconComponent, SkeletonComponent, ToggleComponent],
   template: `
     <div>
       <div class="flex items-center justify-between mb-6">
@@ -33,12 +38,12 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
 
           @if (inviteStep() === 'form') {
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <input type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
+              <input type="email" name="invite-email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
                 class="sm:col-span-2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm
                        text-neutral-100 placeholder-neutral-500 focus:border-[hsl(var(--tenant-primary))]
                        focus:outline-none focus:ring-1 focus:ring-[hsl(var(--tenant-primary))]"
                 placeholder="email@example.com" />
-              <select [ngModel]="inviteRole()" (ngModelChange)="inviteRole.set($event)"
+              <select name="invite-role" [ngModel]="inviteRole()" (ngModelChange)="inviteRole.set($event)"
                 class="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100
                        focus:border-[hsl(var(--tenant-primary))] focus:outline-none">
                 <option value="free">free</option>
@@ -88,11 +93,7 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
       }
 
       @if (loading()) {
-        <div class="space-y-2">
-          @for (_ of [1, 2, 3, 4]; track $index) {
-            <div class="h-14 rounded-lg bg-neutral-800 animate-pulse"></div>
-          }
-        </div>
+        <app-skeleton [count]="4" />
       } @else if (users().length === 0) {
         <p class="text-sm text-neutral-500">{{ 'admin.users.empty' | translate }}</p>
       } @else {
@@ -116,6 +117,7 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
                   <td class="px-4 py-3 text-neutral-400 text-xs hidden sm:table-cell">{{ user.email }}</td>
                   <td class="px-4 py-3">
                     <select
+                      [name]="'role_' + user.id"
                       [ngModel]="user.role"
                       (ngModelChange)="updateRole(user, $event)"
                       class="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-300 focus:outline-none">
@@ -127,17 +129,7 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
                   </td>
                   <td class="px-4 py-3 text-neutral-500 text-xs hidden md:table-cell">{{ formatDate(user.created_at) }}</td>
                   <td class="px-4 py-3 text-right">
-                    <button
-                      (click)="toggleActive(user)"
-                      [class]="user.is_active
-                        ? 'w-9 h-5 rounded-full bg-[hsl(var(--tenant-primary))] relative transition-colors'
-                        : 'w-9 h-5 rounded-full bg-neutral-700 relative transition-colors'"
-                      role="switch" [attr.aria-checked]="user.is_active">
-                      <span [class]="user.is_active
-                        ? 'absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all'
-                        : 'absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all'">
-                      </span>
-                    </button>
+                    <app-toggle [active]="user.is_active" (changed)="toggleActive(user)" />
                   </td>
                 </tr>
               }
@@ -166,6 +158,8 @@ export class AdminUsersComponent implements OnInit {
   readonly inviteMessage = signal<string | null>(null);
   readonly inviteStep = signal<'form' | 'ready'>('form');
   private inviteLink: string | null = null;
+
+  readonly formatDate = formatDate;
 
   async ngOnInit(): Promise<void> {
     await this.loadUsers();
@@ -197,7 +191,7 @@ export class AdminUsersComponent implements OnInit {
 
   async sendDirectInvite(): Promise<void> {
     const email = this.inviteEmail().trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidEmail(email)) {
       this.inviteState.set('error');
       this.inviteMessage.set('Enter a valid email address.');
       return;
@@ -220,16 +214,11 @@ export class AdminUsersComponent implements OnInit {
 
   async shareInvite(): Promise<void> {
     if (!this.inviteLink) return;
-    const shareData = {
-      title: 'Gym Planificación — Invitation',
-      text: `You've been invited to join Gym Planificación! Tap the link to set up your account.`,
-      url: this.inviteLink,
-    };
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(this.inviteLink);
-    }
+    await shareOrCopy(
+      this.inviteLink,
+      'Gym Planificación — Invitation',
+      `You've been invited to join Gym Planificación! Tap the link to set up your account.`,
+    );
   }
 
   async updateRole(user: Profile, newRole: UserRole): Promise<void> {
@@ -251,9 +240,5 @@ export class AdminUsersComponent implements OnInit {
       .eq('id', user.id);
     if (error) { this.actionError.set(error.message); return; }
     this.users.update(list => list.map(u => u.id === user.id ? { ...u, is_active: newActive } : u));
-  }
-
-  formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 }

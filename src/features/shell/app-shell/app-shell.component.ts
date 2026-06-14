@@ -17,7 +17,7 @@ import type { Language } from '../../../core/auth/auth.types';
     <div class="min-h-screen bg-neutral-950 text-neutral-100 flex">
 
       <!-- Mobile top bar -->
-      <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 border-b border-neutral-800 bg-neutral-950 px-4 flex items-center justify-between">
+      <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 border-b border-neutral-800 bg-neutral-950 px-4 flex items-center justify-between max-w-[100dvw]">
         <button
           (click)="toggleDrawer()"
           class="p-2 -ml-1 rounded-md text-neutral-400 hover:text-neutral-100 transition-colors"
@@ -143,7 +143,7 @@ import type { Language } from '../../../core/auth/auth.types';
       <!-- Page content -->
       <div class="flex-1 lg:ml-56 flex flex-col min-h-screen">
         <div class="h-14 lg:hidden flex-shrink-0"></div>
-        <main class="flex-1 p-4 lg:p-6 overflow-y-auto">
+        <main class="flex-1 p-4 lg:p-6 overflow-y-auto max-w-[100dvw]">
           <router-outlet />
         </main>
       </div>

@@ -53,6 +53,7 @@ import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
           <div>
             <p class="text-xs text-neutral-500 mb-2">Assigned Training Plan</p>
             <select
+              name="assigned-plan"
               [value]="selectedPlanId()"
               (change)="onPlanChange($event)"
               [attr.disabled]="saving() ? '' : null"
