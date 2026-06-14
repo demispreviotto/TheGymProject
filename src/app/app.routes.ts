@@ -84,7 +84,7 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
-        canActivate: [roleGuard(['user', 'trainer', 'free'])],
+        canActivate: [roleGuard(['user', 'trainer', 'free', 'admin'])],
         loadComponent: () =>
           import('../features/client/workout-dashboard/workout-dashboard.component').then(
             m => m.WorkoutDashboardComponent,

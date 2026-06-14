@@ -1,14 +1,12 @@
 import { Component, inject, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
-
 type PageState = 'ready' | 'invalid';
 
 @Component({
   selector: 'app-accept-invite',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AppIconComponent],
+  imports: [],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-neutral-950 px-4">
       <div class="w-full max-w-sm space-y-6 text-center">

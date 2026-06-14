@@ -17,7 +17,8 @@ This file serves as the definitive single source of truth for the Gym Planificac
 | 5 — Shell, Workout Engine, Client Portal | ✅ Done | Production | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
 | 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | Production | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
 | 7 — Invitation & Access Control | ✅ Done | **Local only** | RegisterComponent, trainer invites, admin portal, free-user invite requests, `invite_requests` table, `admin` role |
-| 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | **Local only** | Free/admin users create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes |
+| 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | **Local only** | Free/admin/trainer create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes; shared plans viewable read-only by friends; `/dashboard` open to all roles |
+| 8.1 — Rest Timer Component | ✅ Done | **Local only** | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; `ngOnDestroy` cleanup |
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -217,7 +218,7 @@ CREATE TABLE public.invite_requests (
 --   "admin can update all profiles" — TO authenticated USING/WITH CHECK (get_my_role() = 'admin')
 ```
 
-### Phase 8 Schema (migration 20260605191428 — ⏳ local only)
+### Phase 8 Schema (migrations 20260605191428, 20260613114250, 20260614082904 — ⏳ local only)
 
 ```sql
 -- New RLS policies (all use get_my_role() IN ('free','admin') AND tenant_id = auth.uid())
@@ -238,6 +239,14 @@ CREATE TABLE public.friendships (
 );
 -- RLS: both parties see their own rows; requester inserts; addressee updates; requester deletes
 -- Extra SELECT policy on plannings: accepted friends can read is_shared_with_friends=true plans
+
+-- 20260613114250: any authenticated user can read all profiles (friend name lookups)
+CREATE POLICY "authenticated users can read all profiles"
+ON public.profiles FOR SELECT TO authenticated USING (true);
+
+-- 20260614082904: friends can read planning_days, prescribed_exercises, and exercises
+-- referenced in plans where is_shared_with_friends = true
+-- (three separate SELECT policies, one per table)
 ```
 
 ### Edge Functions (`supabase/functions/`)
@@ -264,6 +273,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260605182335_add_admin_role.sql` | ⏳ Local only | `'admin'` added to `user_role` enum |
 | `20260605182337_invite_requests_table.sql` | ⏳ Local only | `invite_requests` table + RLS; admin policies on `profiles` |
 | `20260605191428_phase8_free_user_planning.sql` | ⏳ Local only | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
+| `20260613114250_friendship_profile_read_policy.sql` | ⏳ Local only | `"authenticated users can read all profiles"` SELECT policy (`USING (true)`) — required for friend name lookups and invite-request requester display |
+| `20260614082904_shared_plan_days_read.sql` | ⏳ Local only | Friends can SELECT `planning_days`, `prescribed_exercises`, and `exercises` referenced in shared (`is_shared_with_friends = true`) plans |
 
 ### Core (`src/core/`)
 | File | Purpose |
@@ -282,6 +293,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `tenant/tenant.service.ts` | `tenant` computed from `AuthService`; `update(patch)` — DB write + live theme propagation |
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
+| `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
 
 ### Features (`src/features/`)
 | File | Route | Role |
@@ -289,7 +301,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `auth/login/login.component.ts` | `/login` | public |
 | `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated |
 | `profile/profile-page/profile-page.component.ts` | `/profile` | all |
-| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer |
+| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin |
 | `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
 | `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
 | `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer |
@@ -297,7 +309,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `trainer/exercises/exercise-edit-sheet/exercise-edit-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `trainer/exercises/muscle-tag-matrix/muscle-tag-matrix.component.ts` | *(sub-component)* | trainer |
 | `trainer/planning/planning-list/planning-list.component.ts` | `/trainer/planning` | trainer |
-| `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` | trainer |
+| `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` · `/my-plan/planning/new` · `/my-plan/planning/:id` | trainer · free · admin — supports read-only view mode for non-owned plans (`isReadOnly` signal gated by `tenant_id !== auth.uid()`) |
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `auth/register/register.component.ts` | `/register` | public (invite link) |
@@ -305,7 +317,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `admin/invite-requests/admin-invite-requests.component.ts` | `/admin/requests` | admin |
 | `admin/users/admin-users.component.ts` | `/admin/users` | admin |
 | `free/my-plan-shell/my-plan-shell.component.ts` | `/my-plan` (bare router-outlet) | free · admin |
-| `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin |
+| `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only) |
 | `free/my-exercise-list/my-exercise-list.component.ts` | `/my-plan/exercises` | free · admin |
 | `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
 
@@ -320,6 +332,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `HlmSheetComponent` | `shared/ui/sheet/` | component — slide panel (right or bottom side) |
 | `TranslatePipe` | `shared/pipes/translate.pipe.ts` | impure pipe — `\| translate` resolves key via `LanguageService` |
 | `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name (reads from `auth.tenant()`) |
+| `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast; mounted once in AppShell; driven by `CountdownTimerService` signals |
 
 ---
 

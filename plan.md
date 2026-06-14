@@ -243,18 +243,37 @@ In Supabase Studio → `profiles` table → find your row → set `role = 'admin
 > - Local Docker: migration applied and verified ✓
 > - Production: pending — deploy alongside Phase 7 migrations
 
-### Migration (local only)
+### Migrations (local only)
 | File | What it adds |
 |------|-------------|
 | `20260605191428_phase8_free_user_planning.sql` | RLS for free/admin on exercises + plannings + planning_days + prescribed_exercises; `plannings.is_shared_with_friends`; `friendships` table + RLS |
+| `20260613114250_friendship_profile_read_policy.sql` | Any authenticated user can SELECT all profiles (required for friend name lookups and invite-request requester display) |
+| `20260614082904_shared_plan_days_read.sql` | Friends can SELECT planning_days, prescribed_exercises, and exercises referenced in shared plans |
 
 ### Delivered
 - **Free/admin users can create their own exercises** (`/my-plan/exercises`) — private, only visible to themselves; use same `ExerciseService` and `ExerciseEditSheetComponent`
 - **Free/admin users can create their own training plans** (`/my-plan/planning`) — full CRUD via `PlanningFormComponent` (shared from trainer section); `../` back-navigation works naturally
 - **Friend request system** (`/my-plan/friends`) — send request by email, accept/reject incoming, cancel sent; `FriendshipService` in `core/friendships/`
-- **Plan sharing with friends** — "Share with friends" toggle on each plan (`is_shared_with_friends`); accepted friends can read shared plans via RLS
+- **Plan sharing with friends** — "Share with friends" toggle on each plan (`is_shared_with_friends`); accepted friends can read shared plans via RLS (including days, prescribed exercises, and exercise definitions)
+- **Shared plans viewable in read-only mode** — clicking a friend's shared plan opens `PlanningFormComponent` in read-only state (no edit controls, empty days hidden, "Shared with you" subtitle); owner name shown in plan list badge
 - **Nav updated**: free and admin users see "My Plans", "My Exercises", "Friends" in sidebar
+- **Trainer and admin access Today's Workout** — `/dashboard` now accessible to all roles; trainer/admin see the dashboard link in their nav; no-plan CTA routes to the correct planning section per role (`/trainer/planning` for trainer, `/my-plan/planning` for free/admin)
 - **i18n**: 20 new translation keys (EN/ES)
+
+---
+
+## Phase 8.1: Rest Timer Component
+**Status: ✅ COMPLETE (local)**
+
+### Delivered
+- **`CountdownTimerService`** (`core/timer/countdown-timer.service.ts`) — singleton signal store; `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` (≤5 s) computed signals. `start(seconds)` always clears any prior interval before starting a new one; `cancel()` clears the `setInterval` ref and resets all signals. No zombie timers possible.
+- **`CountdownTimerComponent`** (`shared/components/countdown-timer/countdown-timer.component.ts`) — mounted once in `AppShellComponent` outside `<router-outlet>`. Two render states:
+  - **Fullscreen overlay**: tap outside → collapses to toast.
+  - **Toast** (bottom-center): tap → re-expands to fullscreen.
+  - Last 5 seconds: number blinks via CSS `@keyframes`. On completion: disappears automatically.
+  - `×` cancel button available in both states.
+- **Timer button** on each exercise card (top-right of header row) — disabled on all cards while any timer is running (singleton enforces one-at-a-time). `WorkoutDashboardComponent.ngOnDestroy()` calls `timerService.cancel()` to silently kill the timer on navigation.
+- **`timer` icon** added to SVG icon registry (`shared/ui/icons/svg/timer.ts`).
 
 ---
 

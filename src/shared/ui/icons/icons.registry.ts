@@ -27,6 +27,7 @@ import { shieldSlash } from './svg/shield-slash';
 import { spinner } from './svg/spinner';
 import { star } from './svg/star';
 import { strategy } from './svg/strategy';
+import { timer } from './svg/timer';
 import { translate } from './svg/translate';
 import { user } from './svg/user';
 import { userGroup } from './svg/user-group';
@@ -55,6 +56,7 @@ export const ICONS = {
   'spinner': spinner,
   'star': star,
   'strategy': strategy,
+  'timer': timer,
   'translate': translate,
   'user': user,
   'user-group': userGroup,
