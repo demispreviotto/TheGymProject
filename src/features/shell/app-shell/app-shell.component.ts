@@ -3,6 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { TenantBrandingComponent } from '../../../shared/components/tenant-branding/tenant-branding.component';
+import { CountdownTimerComponent } from '../../../shared/components/countdown-timer/countdown-timer.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { Language } from '../../../core/auth/auth.types';
@@ -11,7 +12,7 @@ import type { Language } from '../../../core/auth/auth.types';
   selector: 'app-shell',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TenantBrandingComponent, TranslatePipe, AppIconComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TenantBrandingComponent, CountdownTimerComponent, TranslatePipe, AppIconComponent],
   template: `
     <div class="min-h-screen bg-neutral-950 text-neutral-100 flex">
 
@@ -42,6 +43,11 @@ import type { Language } from '../../../core/auth/auth.types';
 
         <nav class="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
           @if (isAdmin()) {
+            <a routerLink="/dashboard" routerLinkActive="bg-neutral-800 text-neutral-100"
+               [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()" class="nav-link">
+              <app-icon name="bolt" iconClass="w-4 h-4 flex-shrink-0" />
+              {{ 'nav.workout' | translate }}
+            </a>
             <a routerLink="/admin/requests" routerLinkActive="bg-neutral-800 text-neutral-100"
                (click)="closeDrawer()" class="nav-link">
               <app-icon name="envelope" iconClass="w-4 h-4 flex-shrink-0" />
@@ -53,6 +59,11 @@ import type { Language } from '../../../core/auth/auth.types';
               {{ 'nav.admin.users' | translate }}
             </a>
           } @else if (isTrainer()) {
+            <a routerLink="/dashboard" routerLinkActive="bg-neutral-800 text-neutral-100"
+               [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()" class="nav-link">
+              <app-icon name="bolt" iconClass="w-4 h-4 flex-shrink-0" />
+              {{ 'nav.workout' | translate }}
+            </a>
             <a routerLink="/trainer/exercises" routerLinkActive="bg-neutral-800 text-neutral-100"
                (click)="closeDrawer()" class="nav-link">
               <app-icon name="bars" iconClass="w-4 h-4 flex-shrink-0" />
@@ -68,7 +79,7 @@ import type { Language } from '../../../core/auth/auth.types';
               <app-icon name="users" iconClass="w-4 h-4 flex-shrink-0" />
               {{ 'nav.clients' | translate }}
             </a>
-          } @else if (!isAdmin()) {
+          } @else {
             <a routerLink="/dashboard" routerLinkActive="bg-neutral-800 text-neutral-100"
                [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()" class="nav-link">
               <app-icon name="bolt" iconClass="w-4 h-4 flex-shrink-0" />
@@ -137,6 +148,8 @@ import type { Language } from '../../../core/auth/auth.types';
         </main>
       </div>
     </div>
+
+    <app-countdown-timer />
   `,
   styles: [`
     .nav-link {

@@ -16,6 +16,7 @@ import {
   PrescribedExercisePayload,
 } from '../../../../core/planning/planning.service';
 import { ExerciseService } from '../../../../core/exercises/exercise.service';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import type { ExigenceLevel, TrackingMode } from '../../../../core/planning/planning.types';
 import type { Profile } from '../../../../core/auth/auth.types';
@@ -74,9 +75,18 @@ function emptyDays(): DayForm[] {
   template: `
     <div class="max-w-4xl space-y-6">
 
+      @if (initializing()) {
+        <p class="text-sm text-neutral-500">Loading…</p>
+      } @else {
+
       <!-- Header -->
       <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold">{{ isEdit() ? 'Edit Plan' : 'New Training Plan' }}</h1>
+        <div>
+          <h1 class="text-xl font-semibold">{{ isReadOnly() ? 'View Plan' : (isEdit() ? 'Edit Plan' : 'New Training Plan') }}</h1>
+          @if (isReadOnly()) {
+            <p class="text-xs text-neutral-500 mt-0.5">Shared with you — read only</p>
+          }
+        </div>
         <button type="button" (click)="cancel()"
           class="text-sm text-neutral-400 hover:text-neutral-100 transition-colors">
           ← Back
@@ -88,18 +98,26 @@ function emptyDays(): DayForm[] {
         <!-- Meta -->
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5 col-span-2 md:col-span-1">
-            <label class="text-sm font-medium text-neutral-300">Plan Title *</label>
-            <input [(ngModel)]="title" name="title" required placeholder="e.g. Hypertrophy Block A"
-              class="w-full bg-neutral-900 border border-neutral-700 rounded-md px-3 py-2 text-sm
-                     text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+            <label class="text-sm font-medium text-neutral-300">Plan Title</label>
+            @if (isReadOnly()) {
+              <p class="text-sm text-neutral-100 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-md">{{ title() }}</p>
+            } @else {
+              <input [(ngModel)]="title" name="title" required placeholder="e.g. Hypertrophy Block A"
+                class="w-full bg-neutral-900 border border-neutral-700 rounded-md px-3 py-2 text-sm
+                       text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+            }
           </div>
 
           <div class="flex items-end gap-3 col-span-2 md:col-span-1">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" [(ngModel)]="useAutoRm" name="useAutoRm"
-                class="w-4 h-4 rounded accent-neutral-100" />
-              <span class="text-sm text-neutral-300">Auto 1RM (Epley formula)</span>
-            </label>
+            @if (isReadOnly()) {
+              <p class="text-sm text-neutral-400">{{ useAutoRm() ? 'Auto 1RM (Epley formula)' : 'Fixed weights' }}</p>
+            } @else {
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" [(ngModel)]="useAutoRm" name="useAutoRm"
+                  class="w-4 h-4 rounded accent-neutral-100" />
+                <span class="text-sm text-neutral-300">Auto 1RM (Epley formula)</span>
+              </label>
+            }
           </div>
         </div>
 
@@ -108,6 +126,7 @@ function emptyDays(): DayForm[] {
           <h2 class="text-sm font-semibold text-neutral-300">Weekly Structure</h2>
 
           @for (day of days(); track day.day_number) {
+            @if (!isReadOnly() || day.exercises.length > 0) {
             <div class="border border-neutral-800 rounded-lg overflow-hidden">
 
               <!-- Day header -->
@@ -115,7 +134,7 @@ function emptyDays(): DayForm[] {
                 class="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-900 transition-colors">
                 <div class="flex items-center gap-3">
                   <span class="text-sm font-medium text-neutral-200">
-                    Day {{ day.day_number }} — {{ day.label }}
+                    Day {{ day.day_number }}
                   </span>
                   @if (day.exercises.length > 0) {
                     <span class="text-xs text-neutral-500">{{ day.exercises.length }} exercise{{ day.exercises.length > 1 ? 's' : '' }}</span>
@@ -141,24 +160,29 @@ function emptyDays(): DayForm[] {
 
                         <!-- Row header -->
                         <div class="flex items-center gap-2">
-                          <app-icon cdkDragHandle name="drag-handle"
-                            iconClass="w-4 h-4 text-neutral-700 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                          @if (!isReadOnly()) {
+                            <app-icon cdkDragHandle name="drag-handle"
+                              iconClass="w-4 h-4 text-neutral-700 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                          }
                           <span class="text-xs text-neutral-500 font-mono">
                             #{{ ri + 1 }}
                           </span>
-                          <button type="button" (click)="removeRow(day, ri)"
-                            class="ml-auto text-neutral-600 hover:text-red-400 transition-colors">
-                            <app-icon name="x-mark" />
-                          </button>
+                          @if (!isReadOnly()) {
+                            <button type="button" (click)="removeRow(day, ri)"
+                              class="ml-auto text-neutral-600 hover:text-red-400 transition-colors">
+                              <app-icon name="x-mark" />
+                            </button>
+                          }
                         </div>
 
                         <!-- Exercise select -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div class="space-y-1">
-                            <label class="text-xs text-neutral-500">Exercise *</label>
+                            <label class="text-xs text-neutral-500">Exercise</label>
                             <select [(ngModel)]="row.exercise_id" [name]="'ex_' + row._uid"
+                              [disabled]="isReadOnly()"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     text-neutral-100 focus:outline-none focus:border-neutral-500">
+                                     text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-60">
                               <option value="" disabled>Select exercise…</option>
                               @for (ex of exerciseService.exercises(); track ex.id) {
                                 <option [value]="ex.id">{{ ex.name }}</option>
@@ -169,8 +193,9 @@ function emptyDays(): DayForm[] {
                           <div class="space-y-1">
                             <label class="text-xs text-neutral-500">Tracking Mode</label>
                             <select [(ngModel)]="row.tracking_mode" [name]="'mode_' + row._uid"
+                              [disabled]="isReadOnly()"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     text-neutral-100 focus:outline-none focus:border-neutral-500">
+                                     text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-60">
                               <option value="standard">Standard</option>
                               <option value="granular">Granular</option>
                               <option value="failure">Failure</option>
@@ -183,8 +208,9 @@ function emptyDays(): DayForm[] {
                           <div class="space-y-1">
                             <label class="text-xs text-neutral-500">Exigence</label>
                             <select [(ngModel)]="row.exigence" [name]="'exq_' + row._uid"
+                              [disabled]="isReadOnly()"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     focus:outline-none focus:border-neutral-500"
+                                     focus:outline-none focus:border-neutral-500 disabled:opacity-60"
                               [ngClass]="exigenceColor(row.exigence)">
                               <option value="A">A — Max</option>
                               <option value="B">B — High</option>
@@ -196,51 +222,58 @@ function emptyDays(): DayForm[] {
                           <div class="space-y-1">
                             <label class="text-xs text-neutral-500">Rounds</label>
                             <input type="number" [(ngModel)]="row.rounds" [name]="'rounds_' + row._uid"
+                              [disabled]="isReadOnly()"
                               min="1" max="20"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     text-neutral-100 focus:outline-none focus:border-neutral-500" />
+                                     text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-60" />
                           </div>
 
                           <div class="space-y-1">
                             <label class="text-xs text-neutral-500">Target Reps</label>
                             <input type="number" [(ngModel)]="row.target_reps" [name]="'reps_' + row._uid"
+                              [disabled]="isReadOnly()"
                               min="1" max="100"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     text-neutral-100 focus:outline-none focus:border-neutral-500" />
+                                     text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-60" />
                           </div>
 
                           <div class="space-y-1">
                             <label class="text-xs text-neutral-500">Rest (min)</label>
                             <input type="number" [(ngModel)]="row.rest_time_minutes" [name]="'rest_' + row._uid"
+                              [disabled]="isReadOnly()"
                               min="0" max="10" step="0.5"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     text-neutral-100 focus:outline-none focus:border-neutral-500" />
+                                     text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-60" />
                           </div>
                         </div>
 
                         <!-- Suggested weight (shown only when auto 1RM is off) -->
-                        @if (!useAutoRm) {
+                        @if (!useAutoRm()) {
                           <div class="space-y-1 max-w-36">
                             <label class="text-xs text-neutral-500">Suggested Weight (kg)</label>
                             <input type="number" [(ngModel)]="row.suggested_first_weight"
                               [name]="'weight_' + row._uid"
+                              [disabled]="isReadOnly()"
                               min="0" step="0.5" placeholder="Optional"
                               class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1.5 text-sm
-                                     text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+                                     text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-500 disabled:opacity-60" />
                           </div>
                         }
                       </div>
                     }
                   </div>
 
-                  <button type="button" (click)="addRow(day)"
-                    class="w-full py-2 border border-dashed border-neutral-700 rounded-md text-sm
-                           text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-colors">
-                    + Add Exercise
-                  </button>
+                  @if (!isReadOnly()) {
+                    <button type="button" (click)="addRow(day)"
+                      class="w-full py-2 border border-dashed border-neutral-700 rounded-md text-sm
+                             text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-colors">
+                      + Add Exercise
+                    </button>
+                  }
                 </div>
               }
             </div>
+            }
           }
         </div>
 
@@ -274,26 +307,30 @@ function emptyDays(): DayForm[] {
           <p class="text-sm text-red-400">{{ error() }}</p>
         }
 
-        <div class="flex gap-3 pt-2">
-          <button type="submit"
-            [disabled]="submitting() || !title().trim()"
-            class="px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium
-                   hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {{ submitting() ? 'Saving…' : (isEdit() ? 'Save Changes' : 'Create Plan') }}
-          </button>
-          <button type="button" (click)="cancel()"
-            class="px-4 py-2 rounded-md border border-neutral-700 text-sm text-neutral-300
-                   hover:bg-neutral-800 transition-colors">
-            Cancel
-          </button>
-        </div>
+        @if (!isReadOnly()) {
+          <div class="flex gap-3 pt-2">
+            <button type="submit"
+              [disabled]="submitting() || !title().trim()"
+              class="px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium
+                     hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ submitting() ? 'Saving…' : (isEdit() ? 'Save Changes' : 'Create Plan') }}
+            </button>
+            <button type="button" (click)="cancel()"
+              class="px-4 py-2 rounded-md border border-neutral-700 text-sm text-neutral-300
+                     hover:bg-neutral-800 transition-colors">
+              Cancel
+            </button>
+          </div>
+        }
       </form>
+      } <!-- end @else initializing -->
     </div>
   `,
 })
 export class PlanningFormComponent implements OnInit {
   readonly service = inject(PlanningService);
   readonly exerciseService = inject(ExerciseService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -302,6 +339,8 @@ export class PlanningFormComponent implements OnInit {
   readonly days = signal<DayForm[]>(emptyDays());
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isReadOnly = signal(false);
+  readonly initializing = signal(true);
 
   private editId = signal<string | null>(null);
   private pendingAssignments = signal<Map<string, string | null>>(new Map());
@@ -315,12 +354,13 @@ export class PlanningFormComponent implements OnInit {
     ]);
 
     const id = this.route.snapshot.paramMap.get('id');
-    if (!id) return;
+    if (!id) { this.initializing.set(false); return; }
     this.editId.set(id);
 
     const full = await this.service.loadFull(id);
-    if (!full) return;
+    if (!full) { this.initializing.set(false); return; }
 
+    this.isReadOnly.set(full.tenant_id !== this.auth.profile()?.id);
     this.title.set(full.title);
     this.useAutoRm.set(full.use_auto_1rm);
 
@@ -344,6 +384,7 @@ export class PlanningFormComponent implements OnInit {
         }));
     }
     this.days.set(loaded);
+    this.initializing.set(false);
   }
 
   toggleDay(day: DayForm): void {

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -7,6 +7,7 @@ import { PlanningService } from '../../../core/planning/planning.service';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
+import { CountdownTimerService } from '../../../core/timer/countdown-timer.service';
 import type { ExigenceLevel } from '../../../core/planning/planning.types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -48,12 +49,12 @@ interface WorkoutRowState {
         </div>
 
         @if (isSelfManagedUser()) {
-          <!-- Free / admin: own plans -->
+          <!-- Self-managed: own plans (free / admin / trainer) -->
           <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
             @if (planningService.plannings().length > 0) {
               <p class="text-sm font-medium text-neutral-100">You have {{ planningService.plannings().length }} plan(s). Set one as active to start training.</p>
               <button
-                (click)="router.navigate(['/my-plan/planning'])"
+                (click)="router.navigate([planningRoute()])"
                 class="w-full py-2.5 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Go to my plans
@@ -62,7 +63,7 @@ interface WorkoutRowState {
               <p class="text-sm font-medium text-neutral-100">You don't have any plans yet.</p>
               <p class="text-xs text-neutral-500">Create your first plan to start tracking workouts.</p>
               <button
-                (click)="router.navigate(['/my-plan/planning/new'])"
+                (click)="router.navigate([planningNewRoute()])"
                 class="w-full py-2.5 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Create a plan
@@ -121,6 +122,14 @@ interface WorkoutRowState {
                     {{ row.prescribed.rounds }} rounds · {{ row.prescribed.target_reps }} reps · {{ row.prescribed.rest_time_minutes }} min rest
                   </p>
                 </div>
+                <button
+                  (click)="startTimer(row.prescribed.rest_time_minutes)"
+                  [attr.disabled]="timerService.isActive() ? '' : null"
+                  title="Start rest timer"
+                  class="flex-shrink-0 p-1.5 rounded-lg text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <app-icon name="timer" iconClass="w-4 h-4" />
+                </button>
               </div>
 
               @if (row.suggestedWeight !== null) {
@@ -251,12 +260,13 @@ interface WorkoutRowState {
     }
   `,
 })
-export class WorkoutDashboardComponent implements OnInit {
+export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly workoutService = inject(WorkoutService);
   readonly planningService = inject(PlanningService);
   private readonly supabase = inject(SUPABASE_CLIENT);
   readonly router = inject(Router);
+  readonly timerService = inject(CountdownTimerService);
 
   readonly loading = signal(true);
   readonly plan = signal<WorkoutPlanFull | null>(null);
@@ -270,8 +280,16 @@ export class WorkoutDashboardComponent implements OnInit {
   readonly assignedPlanId = computed(() => this.auth.profile()?.assigned_planning_id ?? null);
   readonly isSelfManagedUser = computed(() => {
     const role = this.auth.profile()?.role;
-    return role === 'free' || role === 'admin';
+    return role === 'free' || role === 'admin' || role === 'trainer';
   });
+
+  readonly planningRoute = computed(() =>
+    this.auth.profile()?.role === 'trainer' ? '/trainer/planning' : '/my-plan/planning'
+  );
+
+  readonly planningNewRoute = computed(() =>
+    this.auth.profile()?.role === 'trainer' ? '/trainer/planning/new' : '/my-plan/planning/new'
+  );
 
   readonly skeletons = [1, 2, 3];
   readonly stars = [1, 2, 3, 4, 5];
@@ -332,6 +350,14 @@ export class WorkoutDashboardComponent implements OnInit {
       updated[rowIndex] = { ...updated[rowIndex], isCompleted: !updated[rowIndex].isCompleted };
       return updated;
     });
+  }
+
+  startTimer(restMinutes: number): void {
+    this.timerService.start(Math.round(restMinutes * 60));
+  }
+
+  ngOnDestroy(): void {
+    this.timerService.cancel();
   }
 
   openFinish(): void {
