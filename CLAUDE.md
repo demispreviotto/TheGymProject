@@ -324,7 +324,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 ### Shared UI (`src/shared/`)
 | Export | File | Type |
 |--------|------|------|
-| `HlmButtonDirective` | `shared/ui/button/` | directive |
+| `HlmButtonDirective` | `shared/ui/button/hlm-button.directive.ts` | directive — CVA variants (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`) + sizes (`default`, `sm`, `lg`, `icon`); apply as `[hlmBtn]` attribute |
+| `IconButtonComponent` | `shared/ui/button/icon-button.component.ts` | component — icon + optional label button. Inputs: `icon` (IconName, required), `label` (string), `variant`, `size`, `disabled`, `labelMode` (`"always"` \| `"never"` \| `"responsive"`). Use `labelMode="responsive"` for buttons that collapse to icon-only on mobile (e.g. Edit, Delete). Use `labelMode="never"` + `size="icon"` for permanently icon-only. **Prefer this over raw `<button>` + `<app-icon>` for any action button with an icon.** |
 | `HlmInputDirective` | `shared/ui/input/` | directive |
 | `HlmLabelDirective` | `shared/ui/label/` | directive |
 | `HlmBadgeDirective` | `shared/ui/badge/` | directive |
