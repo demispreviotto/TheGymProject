@@ -275,6 +275,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260605191428_phase8_free_user_planning.sql` | ⏳ Local only | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
 | `20260613114250_friendship_profile_read_policy.sql` | ⏳ Local only | `"authenticated users can read all profiles"` SELECT policy (`USING (true)`) — required for friend name lookups and invite-request requester display |
 | `20260614082904_shared_plan_days_read.sql` | ⏳ Local only | Friends can SELECT `planning_days`, `prescribed_exercises`, and `exercises` referenced in shared (`is_shared_with_friends = true`) plans |
+| `20260921160530_restrict_role_self_update.sql` | ⏳ Local only | Replaces `"profiles: update own"` so a user can update their own row but not their own `role` column (blocks self-escalation via RLS) |
 
 ### Core (`src/core/`)
 | File | Purpose |
