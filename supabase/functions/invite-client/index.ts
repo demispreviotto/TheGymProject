@@ -5,7 +5,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAX_INVITES_PER_TENANT = 100;
+
 type InviteableRole = 'trainer' | 'user' | 'free';
+
+function errorResponse(message: string, status: number, extra?: Record<string, unknown>): Response {
+  return new Response(JSON.stringify({ error: message, ...extra }), {
+    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -15,9 +23,7 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('Missing authorization header', 401);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -27,9 +33,7 @@ Deno.serve(async (req: Request) => {
     console.log('env check — SUPABASE_URL present:', !!supabaseUrl, '| SITE_URL:', siteUrl);
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ error: 'Missing environment variables' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('Missing environment variables', 500);
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -40,9 +44,7 @@ Deno.serve(async (req: Request) => {
     const callerToken = authHeader.replace('Bearer ', '');
     const { data: { user: callerUser }, error: userErr } = await adminClient.auth.getUser(callerToken);
     if (userErr || !callerUser) {
-      return new Response(JSON.stringify({ error: 'Invalid session' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('Invalid session', 401);
     }
 
     const { data: callerProfile, error: profileErr } = await adminClient
@@ -52,25 +54,39 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (profileErr || !callerProfile) {
-      return new Response(JSON.stringify({ error: 'Profile not found' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('Profile not found', 403);
     }
 
     const callerRole: string = callerProfile.role;
     if (callerRole !== 'trainer' && callerRole !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Only trainers and admins can invite users' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('Only trainers and admins can invite users', 403);
     }
 
     const body = await req.json() as { email: string; role?: InviteableRole; tenantId?: string };
     const { email } = body;
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return new Response(JSON.stringify({ error: 'Invalid email address' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse('Invalid email address', 400);
+    }
+
+    // Reject duplicate invites/registrations. Querying `profiles.email` (populated by
+    // handle_new_user at invite time, not just at registration) instead of
+    // auth.admin.listUsers() -- listUsers() paginates (50/page by default) and would
+    // silently miss matches once the tenant has more users than one page.
+    // % and _ are escaped since ilike treats them as wildcards and both are valid
+    // (if unusual) characters in an email local-part.
+    const escapedEmail = email.replace(/[%_]/g, (c) => `\\${c}`);
+    const { data: existingProfile, error: existingErr } = await adminClient
+      .from('profiles')
+      .select('id')
+      .ilike('email', escapedEmail)
+      .maybeSingle();
+
+    if (existingErr) {
+      return errorResponse('Failed to verify existing users', 500);
+    }
+    if (existingProfile) {
+      return errorResponse('A user with this email already exists', 409);
     }
 
     // Determine invite target role and tenant linkage
@@ -91,6 +107,23 @@ Deno.serve(async (req: Request) => {
       tenantRefId = callerProfile.tenant_ref_id ?? null;
     }
 
+    // Per-tenant invite cap. Only meaningful when there's a tenant bucket being filled
+    // (trainer inviting a client, or admin inviting into an explicit tenantId) --
+    // admin invites with no tenantId (e.g. inviting a new trainer) have no bucket to cap.
+    if (tenantId) {
+      const { count, error: countErr } = await adminClient
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId);
+
+      if (countErr) {
+        return errorResponse('Failed to check tenant invite limit', 500);
+      }
+      if ((count ?? 0) >= MAX_INVITES_PER_TENANT) {
+        return errorResponse('Tenant invite limit reached', 429);
+      }
+    }
+
     // Step 1: Generate invite link (no email sent — admin shares the link manually)
     console.log('calling generateLink for', email, '— redirectTo:', `${siteUrl}/register`);
     const { data: linkData, error: inviteErr } = await adminClient.auth.admin.generateLink({
@@ -101,9 +134,7 @@ Deno.serve(async (req: Request) => {
 
     if (inviteErr) {
       console.error('generateLink error:', inviteErr.message);
-      return new Response(JSON.stringify({ error: inviteErr.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(inviteErr.message, 400);
     }
 
     const inviteData = { user: linkData.user };
@@ -155,8 +186,6 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err) {
     console.error('unhandled exception:', err);
-    return new Response(JSON.stringify({ error: 'Unexpected error', detail: String(err) }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return errorResponse('Unexpected error', 500, { detail: String(err) });
   }
 });
