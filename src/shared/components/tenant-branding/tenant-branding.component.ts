@@ -1,5 +1,6 @@
 import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -26,6 +27,7 @@ export class TenantBrandingComponent {
   readonly safeSvg = computed((): SafeHtml | null => {
     const svg = this.auth.tenant()?.logo_svg;
     if (!svg) return null;
-    return this.sanitizer.bypassSecurityTrustHtml(svg);
+    const clean = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
+    return this.sanitizer.bypassSecurityTrustHtml(clean);
   });
 }
