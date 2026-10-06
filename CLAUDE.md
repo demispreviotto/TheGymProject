@@ -28,6 +28,20 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## 0. Critical Execution Constraints & Environment
 
+### Production Safety — HARD STOPS
+These actions affect the live production environment and **must never be executed without explicit user confirmation in the same conversation turn:**
+
+| Command | Risk |
+|---------|------|
+| `supabase db push` | Applies pending migrations to production Supabase — irreversible schema changes |
+| `supabase functions deploy` | Overwrites live edge functions (e.g. `invite-client`) |
+| `vercel --prod` / `vercel deploy --prod` | Deploys frontend build to production Vercel project |
+| Any `supabase db execute` or raw SQL against production | Direct production DB mutation |
+
+**Current deploy gap:** Phases 7, 8, and 8.1 are complete locally but **not yet pushed to production**. Migrations `20260605*`, `20260613*`, `20260614*` and the `invite-client` edge function are pending. Do not push these automatically — coordinate with the user before each production deploy step.
+
+Before running any production command, state clearly: _"This will affect production. Confirm?"_ and wait for an affirmative reply.
+
 ### Package Management
 - **Mandatory Tooling:** You MUST use `pnpm` for all package management actions. Never generate a `package-lock.json` or `yarn.lock`. All commands must use `pnpm add`, `pnpm dev`, etc.
 
@@ -252,7 +266,7 @@ ON public.profiles FOR SELECT TO authenticated USING (true);
 ### Edge Functions (`supabase/functions/`)
 | File | Status | Purpose |
 |------|--------|---------|
-| `invite-client/index.ts` | ⏳ Local only (must deploy) | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body) |
+| `invite-client/index.ts` | ⏳ Local only (must deploy) | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant |
 
 ---
 
@@ -273,8 +287,11 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260605182335_add_admin_role.sql` | ⏳ Local only | `'admin'` added to `user_role` enum |
 | `20260605182337_invite_requests_table.sql` | ⏳ Local only | `invite_requests` table + RLS; admin policies on `profiles` |
 | `20260605191428_phase8_free_user_planning.sql` | ⏳ Local only | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
+| `20260612175053_invite_inactive_by_default.sql` | ⏳ Local only | `handle_new_user` sets `is_active = false` for invited users until they complete `/register` |
 | `20260613114250_friendship_profile_read_policy.sql` | ⏳ Local only | `"authenticated users can read all profiles"` SELECT policy (`USING (true)`) — required for friend name lookups and invite-request requester display |
 | `20260614082904_shared_plan_days_read.sql` | ⏳ Local only | Friends can SELECT `planning_days`, `prescribed_exercises`, and `exercises` referenced in shared (`is_shared_with_friends = true`) plans |
+| `20260921154818_performance_indexes.sql` | ⏳ Local only | Indexes on `profiles.tenant_id`/`tenant_ref_id`, `plannings.tenant_id`, `workout_sessions(user_id, planning_id, completed_at)`, `friendships.requester_id`/`addressee_id`, `invite_requests.status` |
+| `20260921160530_restrict_role_self_update.sql` | ⏳ Local only | Replaces `"profiles: update own"` so a user can update their own row but not their own `role` column (blocks self-escalation via RLS) |
 
 ### Core (`src/core/`)
 | File | Purpose |
@@ -365,3 +382,16 @@ $$1\text{RM} = w_{\text{hist}} \cdot \left(1 + \frac{r_{\text{hist}}}{30}\right)
 When calculating the target weight suggestions ($w_{\text{suggested}}$) for a new prescription row containing a target repetition count ($r_{\text{target}}$):
 $$w_{\text{suggested}} = \frac{1\text{RM}}{1 + \frac{r_{\text{target}}}{30}}$$
 If historical entries are absent, fallback targets gracefully use the trainer's parameterized `suggested_first_weight`.
+
+---
+
+## 6. Security Notes
+
+- **RLS is the real access boundary.** Route guards (`authGuard`, `roleGuard`) are a UX convenience only — never rely on them alone to protect data. Every table must have RLS policies that hold up if called directly.
+- **`profiles.role` cannot be self-escalated.** The `"profiles: update own"` policy was replaced in `20260921160530_restrict_role_self_update.sql` so a user can update their own row but not their own `role` column, unless they're already an admin.
+- **Auth uses Supabase JWTs** (bearer tokens in `localStorage`), not cookies — CSRF protection is not needed.
+- **Tenant logo SVGs are sanitized client-side.** `tenant_logo_svg` is user-controlled (trainer-uploaded), size-capped at 64KB at the DB level, and sanitized with DOMPurify (`USE_PROFILES: { svg: true, svgFilters: true }`) in `TenantBrandingComponent` before being trusted via `bypassSecurityTrustHtml`. This strips `<script>`, event handlers (`onload`, `onclick`, etc.), and `javascript:` URLs while preserving legitimate shape/path markup.
+- **CSP headers** (`Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) are set in `vercel.json` — they apply to the deployed Vercel site only, not local `ng serve`.
+
+## Commit Attribution
+Never add a `Co-Authored-By: Claude ...` trailer (or any Claude/Anthropic attribution line) to commit messages or PR descriptions. See `.clouderule`.
