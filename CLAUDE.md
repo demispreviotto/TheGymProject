@@ -252,7 +252,7 @@ ON public.profiles FOR SELECT TO authenticated USING (true);
 ### Edge Functions (`supabase/functions/`)
 | File | Status | Purpose |
 |------|--------|---------|
-| `invite-client/index.ts` | ⏳ Local only (must deploy) | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body) |
+| `invite-client/index.ts` | ⏳ Local only (must deploy) | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant |
 
 ---
 
