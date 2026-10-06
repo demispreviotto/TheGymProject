@@ -28,6 +28,20 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## 0. Critical Execution Constraints & Environment
 
+### Production Safety — HARD STOPS
+These actions affect the live production environment and **must never be executed without explicit user confirmation in the same conversation turn:**
+
+| Command | Risk |
+|---------|------|
+| `supabase db push` | Applies pending migrations to production Supabase — irreversible schema changes |
+| `supabase functions deploy` | Overwrites live edge functions (e.g. `invite-client`) |
+| `vercel --prod` / `vercel deploy --prod` | Deploys frontend build to production Vercel project |
+| Any `supabase db execute` or raw SQL against production | Direct production DB mutation |
+
+**Current deploy gap:** Phases 7, 8, and 8.1 are complete locally but **not yet pushed to production**. Migrations `20260605*`, `20260613*`, `20260614*` and the `invite-client` edge function are pending. Do not push these automatically — coordinate with the user before each production deploy step.
+
+Before running any production command, state clearly: _"This will affect production. Confirm?"_ and wait for an affirmative reply.
+
 ### Package Management
 - **Mandatory Tooling:** You MUST use `pnpm` for all package management actions. Never generate a `package-lock.json` or `yarn.lock`. All commands must use `pnpm add`, `pnpm dev`, etc.
 
@@ -378,3 +392,6 @@ If historical entries are absent, fallback targets gracefully use the trainer's 
 - **Auth uses Supabase JWTs** (bearer tokens in `localStorage`), not cookies — CSRF protection is not needed.
 - **Tenant logo SVGs are sanitized client-side.** `tenant_logo_svg` is user-controlled (trainer-uploaded), size-capped at 64KB at the DB level, and sanitized with DOMPurify (`USE_PROFILES: { svg: true, svgFilters: true }`) in `TenantBrandingComponent` before being trusted via `bypassSecurityTrustHtml`. This strips `<script>`, event handlers (`onload`, `onclick`, etc.), and `javascript:` URLs while preserving legitimate shape/path markup.
 - **CSP headers** (`Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) are set in `vercel.json` — they apply to the deployed Vercel site only, not local `ng serve`.
+
+## Commit Attribution
+Never add a `Co-Authored-By: Claude ...` trailer (or any Claude/Anthropic attribution line) to commit messages or PR descriptions. See `.clouderule`.
