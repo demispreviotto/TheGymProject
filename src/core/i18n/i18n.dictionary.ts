@@ -159,6 +159,12 @@ export const dictionary = {
   'invite.link.expiry':     { en: 'Link expires in 24 h · one-time use only.',                        es: 'El enlace expira en 24 h · uso único.' },
   'invite.error.invalid':   { en: 'Enter a valid email address.',                                     es: 'Ingresa un correo válido.' },
 
+  // PWA
+  'pwa.update.message':   { en: 'A new version is available.',                       es: 'Hay una nueva versión disponible.' },
+  'pwa.update.action':    { en: 'Update',                                             es: 'Actualizar' },
+  'pwa.update.dismiss':   { en: 'Later',                                              es: 'Después' },
+  'pwa.offline':          { en: 'You are offline. Changes need a connection to save.', es: 'Sin conexión. Los cambios necesitan conexión para guardarse.' },
+
   // Trainer branding panel
   'branding.title':          { en: 'Gym Branding',          es: 'Imagen del Gimnasio' },
   'branding.unlock':         { en: 'Edit Branding',         es: 'Editar Imagen' },
