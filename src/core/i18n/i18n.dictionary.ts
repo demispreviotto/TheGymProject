@@ -159,6 +159,19 @@ export const dictionary = {
   'invite.link.expiry':     { en: 'Link expires in 24 h · one-time use only.',                        es: 'El enlace expira en 24 h · uso único.' },
   'invite.error.invalid':   { en: 'Enter a valid email address.',                                     es: 'Ingresa un correo válido.' },
 
+  // PWA
+  'pwa.update.message':   { en: 'A new version is available.',                       es: 'Hay una nueva versión disponible.' },
+  'pwa.update.action':    { en: 'Update',                                             es: 'Actualizar' },
+  'pwa.update.dismiss':   { en: 'Later',                                              es: 'Después' },
+  'pwa.offline':          { en: 'You are offline. Changes need a connection to save.', es: 'Sin conexión. Los cambios necesitan conexión para guardarse.' },
+
+  // Push notifications
+  'push.title':   { en: 'Notifications',                                           es: 'Notificaciones' },
+  'push.hint':    { en: 'Get alerts for friend requests and invite decisions.',    es: 'Recibe avisos de solicitudes de amistad e invitaciones.' },
+  'push.enable':  { en: 'Enable',                                                  es: 'Activar' },
+  'push.enabled': { en: 'Enabled',                                                 es: 'Activadas' },
+  'push.error':   { en: 'Could not enable notifications. Try again.',              es: 'No se pudieron activar las notificaciones. Inténtalo de nuevo.' },
+
   // Trainer branding panel
   'branding.title':          { en: 'Gym Branding',          es: 'Imagen del Gimnasio' },
   'branding.unlock':         { en: 'Edit Branding',         es: 'Editar Imagen' },
