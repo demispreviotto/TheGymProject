@@ -5,6 +5,7 @@ import { TenantService } from '../../../core/tenant/tenant.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { PushToggleComponent } from '../push-toggle/push-toggle.component';
 import type { UserRole } from '../../../core/auth/auth.types';
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -13,10 +14,12 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
   selector: 'app-profile-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe],
+  imports: [FormsModule, TranslatePipe, PushToggleComponent],
   template: `
     <div class="max-w-lg space-y-6">
       <h1 class="text-xl font-bold text-neutral-100">{{ 'profile.title' | translate }}</h1>
+
+      <app-push-toggle />
 
       <!-- Identity card -->
       <div class="rounded-xl border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800">
