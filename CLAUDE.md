@@ -273,8 +273,10 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260605182335_add_admin_role.sql` | ⏳ Local only | `'admin'` added to `user_role` enum |
 | `20260605182337_invite_requests_table.sql` | ⏳ Local only | `invite_requests` table + RLS; admin policies on `profiles` |
 | `20260605191428_phase8_free_user_planning.sql` | ⏳ Local only | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
+| `20260612175053_invite_inactive_by_default.sql` | ⏳ Local only | `handle_new_user` sets `is_active = false` for invited users until they complete `/register` |
 | `20260613114250_friendship_profile_read_policy.sql` | ⏳ Local only | `"authenticated users can read all profiles"` SELECT policy (`USING (true)`) — required for friend name lookups and invite-request requester display |
 | `20260614082904_shared_plan_days_read.sql` | ⏳ Local only | Friends can SELECT `planning_days`, `prescribed_exercises`, and `exercises` referenced in shared (`is_shared_with_friends = true`) plans |
+| `20260921154818_performance_indexes.sql` | ⏳ Local only | Indexes on `profiles.tenant_id`/`tenant_ref_id`, `plannings.tenant_id`, `workout_sessions(user_id, planning_id, completed_at)`, `friendships.requester_id`/`addressee_id`, `invite_requests.status` |
 
 ### Core (`src/core/`)
 | File | Purpose |
