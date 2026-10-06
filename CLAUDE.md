@@ -368,3 +368,13 @@ $$1\text{RM} = w_{\text{hist}} \cdot \left(1 + \frac{r_{\text{hist}}}{30}\right)
 When calculating the target weight suggestions ($w_{\text{suggested}}$) for a new prescription row containing a target repetition count ($r_{\text{target}}$):
 $$w_{\text{suggested}} = \frac{1\text{RM}}{1 + \frac{r_{\text{target}}}{30}}$$
 If historical entries are absent, fallback targets gracefully use the trainer's parameterized `suggested_first_weight`.
+
+---
+
+## 6. Security Notes
+
+- **RLS is the real access boundary.** Route guards (`authGuard`, `roleGuard`) are a UX convenience only — never rely on them alone to protect data. Every table must have RLS policies that hold up if called directly.
+- **`profiles.role` cannot be self-escalated.** The `"profiles: update own"` policy was replaced in `20260921160530_restrict_role_self_update.sql` so a user can update their own row but not their own `role` column, unless they're already an admin.
+- **Auth uses Supabase JWTs** (bearer tokens in `localStorage`), not cookies — CSRF protection is not needed.
+- **Tenant logo SVGs are sanitized client-side.** `tenant_logo_svg` is user-controlled (trainer-uploaded), size-capped at 64KB at the DB level, and sanitized with DOMPurify (`USE_PROFILES: { svg: true, svgFilters: true }`) in `TenantBrandingComponent` before being trusted via `bypassSecurityTrustHtml`. This strips `<script>`, event handlers (`onload`, `onclick`, etc.), and `javascript:` URLs while preserving legitimate shape/path markup.
+- **CSP headers** (`Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) are set in `vercel.json` — they apply to the deployed Vercel site only, not local `ng serve`.
