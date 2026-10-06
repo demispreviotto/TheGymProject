@@ -6,6 +6,7 @@
     "start": "node --max-old-space-size=4096 node_modules/@angular/cli/bin/ng.js serve",
     "prebuild": "node scripts/generate-env.mjs",
     "build": "ng build",
+    "check:csp": "node scripts/check-csp.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.conf.js",
