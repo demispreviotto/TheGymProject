@@ -42,3 +42,11 @@ yarn-error.log*
 .eslintcache
 .vercel
 .env*
+
+# ==========================================
+# Generated at build time / local tooling
+# ==========================================
+# Written by scripts/generate-env.mjs (prebuild) from SUPABASE_URL / SUPABASE_ANON_KEY
+/src/environments/environment.prod.ts
+# Supabase Studio SQL editor scratch files
+/supabase/snippets/
