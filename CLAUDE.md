@@ -6,19 +6,23 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## Current Development State
 
-**Active Phase:** Phases 7 & 8 complete locally — pending production deploy. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
+**Active Phase:** Phases 1–8.1 are complete and live. PWA support, push notifications and the Karma unit-test suite are also in place. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
 
-| Phase | Status | Environment | Summary |
-|-------|--------|-------------|---------|
-| 1 — Infrastructure | ✅ Done | Production | Supabase CLI, SQL schema + RLS migrations, seed data |
-| 2 — Angular Scaffold | ✅ Done | Production | Auth, ThemeService, async roleGuard/authGuard, LoginComponent |
-| 3 — Mobile Workout Engine | ✅ Done | Production | WorkoutService + WorkoutDashboardComponent: Epley 1RM, adaptive inputs, session drawer |
-| 4 — Trainer Admin Dashboard | ✅ Done | Production | Exercise & Planning CRUD, ExerciseEditSheetComponent, ClientRosterComponent + ClientDetailSheetComponent |
-| 5 — Shell, Workout Engine, Client Portal | ✅ Done | Production | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
-| 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | Production | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
-| 7 — Invitation & Access Control | ✅ Done | **Local only** | RegisterComponent, trainer invites, admin portal, free-user invite requests, `invite_requests` table, `admin` role |
-| 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | **Local only** | Free/admin/trainer create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes; shared plans viewable read-only by friends; `/dashboard` open to all roles |
-| 8.1 — Rest Timer Component | ✅ Done | **Local only** | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; `ngOnDestroy` cleanup |
+| Phase | Status | Summary |
+|-------|--------|---------|
+| 1 — Infrastructure | ✅ Done | Supabase CLI, SQL schema + RLS migrations, seed data |
+| 2 — Angular Scaffold | ✅ Done | Auth, ThemeService, async roleGuard/authGuard, LoginComponent |
+| 3 — Mobile Workout Engine | ✅ Done | WorkoutService + WorkoutDashboardComponent: Epley 1RM, adaptive inputs, session drawer |
+| 4 — Trainer Admin Dashboard | ✅ Done | Exercise & Planning CRUD, ExerciseEditSheetComponent, ClientRosterComponent + ClientDetailSheetComponent |
+| 5 — Shell, Workout Engine, Client Portal | ✅ Done | AppShellComponent (universal layout), all routes wired, ProfilePageComponent |
+| 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
+| 7 — Invitation & Access Control | ✅ Done | RegisterComponent, trainer invites, admin portal, free-user invite requests, `invite_requests` table, `admin` role |
+| 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | Free/admin/trainer create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes; shared plans viewable read-only by friends; `/dashboard` open to all roles |
+| 8.1 — Rest Timer Component | ✅ Done | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; screen wake lock while running; `ngOnDestroy` cleanup |
+| PWA + Push | ✅ Done | Installable manifest, service worker (`ngsw-config.json`), update prompt, offline banner, iOS splash screens, Web Push for friend requests and invite decisions |
+| Tests | ✅ Done | Karma + Jasmine: `pnpm test` (watch) · `pnpm test:ci` (headless). Specs live next to the code as `*.spec.ts`; shared Supabase mock in `src/testing/supabase-mock.ts` |
+
+**Branches:** `main` is production — protected, PR-only, and a merge deploys the frontend to Vercel. `dev` is the integration/testing branch; work lands there first and is promoted to `main` by PR. Database migrations and edge functions are deployed separately by hand (see Hard Stops).
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -38,7 +42,7 @@ These actions affect the live production environment and **must never be execute
 | `vercel --prod` / `vercel deploy --prod` | Deploys frontend build to production Vercel project |
 | Any `supabase db execute` or raw SQL against production | Direct production DB mutation |
 
-**Current deploy gap:** Phases 7, 8, and 8.1 are complete locally but **not yet pushed to production**. Migrations `20260605*`, `20260613*`, `20260614*` and the `invite-client` edge function are pending. Do not push these automatically — coordinate with the user before each production deploy step.
+**Deployment state is not recorded in this file.** Before assuming anything is or isn't in production, check the source of truth: `supabase migration list`, `supabase functions list`, and `git log origin/main`. Never run the production commands above automatically — coordinate with the user before each one.
 
 Before running any production command, state clearly: _"This will affect production. Confirm?"_ and wait for an affirmative reply.
 
@@ -202,7 +206,7 @@ ALTER TABLE public.plannings
   ADD COLUMN is_shared_with_gym BOOLEAN DEFAULT FALSE NOT NULL; -- enables protocol link sharing
 ```
 
-### Phase 7 Schema (migrations 20260605* — ⏳ local only, not yet in production)
+### Phase 7 Schema (migrations 20260605*)
 
 ```sql
 -- user_role enum gains 'admin'
@@ -232,7 +236,7 @@ CREATE TABLE public.invite_requests (
 --   "admin can update all profiles" — TO authenticated USING/WITH CHECK (get_my_role() = 'admin')
 ```
 
-### Phase 8 Schema (migrations 20260605191428, 20260613114250, 20260614082904 — ⏳ local only)
+### Phase 8 Schema (migrations 20260605191428, 20260613114250, 20260614082904)
 
 ```sql
 -- New RLS policies (all use get_my_role() IN ('free','admin') AND tenant_id = auth.uid())
@@ -264,9 +268,10 @@ ON public.profiles FOR SELECT TO authenticated USING (true);
 ```
 
 ### Edge Functions (`supabase/functions/`)
-| File | Status | Purpose |
-|------|--------|---------|
-| `invite-client/index.ts` | ⏳ Local only (must deploy) | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant |
+| File | Purpose |
+|------|---------|
+| `invite-client/index.ts` | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant |
+| `send-push/index.ts` | Web Push delivery. Called by the DB `send_push()` function with an `x-push-secret` header; sends to a user's `push_subscriptions` and prunes endpoints that return 404/410 |
 
 ---
 
@@ -275,23 +280,24 @@ ON public.profiles FOR SELECT TO authenticated USING (true);
 All source lives under `src/`. Angular app root is `src/app/`.
 
 ### Migrations (`supabase/migrations/`)
-| File | Status | What it adds |
-|------|--------|-------------|
-| `20260524000001_enums.sql` | ✅ Production | `user_role`, `muscle_intensity`, `tracking_mode` enums |
-| `20260524000002_tables.sql` | ✅ Production | All core tables + `handle_new_user` trigger |
-| `20260524000003_rls.sql` | ✅ Production | Row-Level Security policies |
-| `20260524000004_profiles_assigned_planning.sql` | ✅ Production | `profiles.assigned_planning_id` |
-| `20260526000005_profiles_is_active.sql` | ✅ Production | `profiles.is_active` |
-| `20260530000006_phase6_schema.sql` | ✅ Production | `tenants` table; `profiles.tenant_ref_id`, `preferred_language`, `assigned_trainer_id`; `plannings.is_shared_with_gym` |
-| `20260605174327_invite_trigger_update.sql` | ⏳ Local only | `handle_new_user` reads `raw_app_meta_data`; trainer invite auto-creates `tenants` row |
-| `20260605182335_add_admin_role.sql` | ⏳ Local only | `'admin'` added to `user_role` enum |
-| `20260605182337_invite_requests_table.sql` | ⏳ Local only | `invite_requests` table + RLS; admin policies on `profiles` |
-| `20260605191428_phase8_free_user_planning.sql` | ⏳ Local only | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
-| `20260612175053_invite_inactive_by_default.sql` | ⏳ Local only | `handle_new_user` sets `is_active = false` for invited users until they complete `/register` |
-| `20260613114250_friendship_profile_read_policy.sql` | ⏳ Local only | `"authenticated users can read all profiles"` SELECT policy (`USING (true)`) — required for friend name lookups and invite-request requester display |
-| `20260614082904_shared_plan_days_read.sql` | ⏳ Local only | Friends can SELECT `planning_days`, `prescribed_exercises`, and `exercises` referenced in shared (`is_shared_with_friends = true`) plans |
-| `20260921154818_performance_indexes.sql` | ⏳ Local only | Indexes on `profiles.tenant_id`/`tenant_ref_id`, `plannings.tenant_id`, `workout_sessions(user_id, planning_id, completed_at)`, `friendships.requester_id`/`addressee_id`, `invite_requests.status` |
-| `20260921160530_restrict_role_self_update.sql` | ⏳ Local only | Replaces `"profiles: update own"` so a user can update their own row but not their own `role` column (blocks self-escalation via RLS) |
+| File | What it adds |
+|------|-------------|
+| `20260524000001_enums.sql` | `user_role`, `muscle_intensity`, `tracking_mode` enums |
+| `20260524000002_tables.sql` | All core tables + `handle_new_user` trigger |
+| `20260524000003_rls.sql` | Row-Level Security policies |
+| `20260524000004_profiles_assigned_planning.sql` | `profiles.assigned_planning_id` |
+| `20260526000005_profiles_is_active.sql` | `profiles.is_active` |
+| `20260530000006_phase6_schema.sql` | `tenants` table; `profiles.tenant_ref_id`, `preferred_language`, `assigned_trainer_id`; `plannings.is_shared_with_gym` |
+| `20260605174327_invite_trigger_update.sql` | `handle_new_user` reads `raw_app_meta_data`; trainer invite auto-creates `tenants` row |
+| `20260605182335_add_admin_role.sql` | `'admin'` added to `user_role` enum |
+| `20260605182337_invite_requests_table.sql` | `invite_requests` table + RLS; admin policies on `profiles` |
+| `20260605191428_phase8_free_user_planning.sql` | RLS for free/admin on exercises + plannings + days + prescribed; `plannings.is_shared_with_friends`; `friendships` table + RLS |
+| `20260612175053_invite_inactive_by_default.sql` | `handle_new_user` sets `is_active = false` for invited users until they complete `/register` |
+| `20260613114250_friendship_profile_read_policy.sql` | `"authenticated users can read all profiles"` SELECT policy (`USING (true)`) — required for friend name lookups and invite-request requester display |
+| `20260614082904_shared_plan_days_read.sql` | Friends can SELECT `planning_days`, `prescribed_exercises`, and `exercises` referenced in shared (`is_shared_with_friends = true`) plans |
+| `20260921154818_performance_indexes.sql` | Indexes on `profiles.tenant_id`/`tenant_ref_id`, `plannings.tenant_id`, `workout_sessions(user_id, planning_id, completed_at)`, `friendships.requester_id`/`addressee_id`, `invite_requests.status` |
+| `20260921160530_restrict_role_self_update.sql` | Replaces `"profiles: update own"` so a user can update their own row but not their own `role` column (blocks self-escalation via RLS) |
+| `20261005120000_push_notifications.sql` | `push_subscriptions` table + RLS; `send_push()` (pg_net → `send-push` edge function, secrets in Vault); triggers `friendships_push` and `invite_requests_push` |
 
 ### Core (`src/core/`)
 | File | Purpose |
@@ -311,6 +317,9 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
 | `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
+| `push/push-notification.service.ts` | `isSupported`, `isSubscribed` signals; `enable()` requests a `SwPush` subscription (VAPID key in `push/push.config.ts`) and upserts it into `push_subscriptions` |
+| `pwa/pwa-update.service.ts` | `updateReady` signal (service-worker `VERSION_READY`); `applyUpdate()` activates the new version and reloads |
+| `network/network-status.service.ts` | `online` signal from `window` online/offline events |
 
 ### Features (`src/features/`)
 | File | Route | Role |
@@ -337,6 +346,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only) |
 | `trainer/exercises/exercise-list/exercise-list.component.ts` | `/my-plan/exercises` | free · admin — same component as trainer route; receives `titleKey='myplan.exercises.title'` and `newRoute='/my-plan/exercises/new'` via route `data` (bound via `withComponentInputBinding`) |
 | `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
+| `profile/push-toggle/push-toggle.component.ts` | *(embedded in `/profile`)* | all — enables/disables push notifications via `PushNotificationService` |
 
 ### Shared UI (`src/shared/`)
 | Export | File | Type |
@@ -355,6 +365,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `SkeletonComponent` | `shared/components/skeleton/` | component — animated loading pulse rows. Inputs: `count` (number, default `3`), `itemClass` (string, default `'h-14'`). Use instead of inline `@for` animate-pulse blocks. |
 | `ToggleComponent` | `shared/components/toggle/` | component — accessible boolean switch styled with tenant primary color. Inputs: `active` (boolean, required). Output: `changed` (boolean). Replaces inline `role="switch"` buttons with class-mapping methods. |
 | `PageHeaderComponent` | `shared/components/page-header/` | component — standardised page title + subtitle row with `ng-content` slot for the action button. Inputs: `title` (string, required), `subtitle` (string, optional). Use at the top of every list/admin page. |
+| `UpdatePromptComponent` | `shared/components/update-prompt/` | component — banner shown when `PwaUpdateService.updateReady()`; applies the new service-worker version and reloads |
+| `OfflineBannerComponent` | `shared/components/offline-banner/` | component — banner shown while `NetworkStatusService.online()` is false |
 
 ### Shared Utilities (`src/shared/utils/`)
 | Export | File | Purpose |
@@ -391,7 +403,7 @@ If historical entries are absent, fallback targets gracefully use the trainer's 
 - **`profiles.role` cannot be self-escalated.** The `"profiles: update own"` policy was replaced in `20260921160530_restrict_role_self_update.sql` so a user can update their own row but not their own `role` column, unless they're already an admin.
 - **Auth uses Supabase JWTs** (bearer tokens in `localStorage`), not cookies — CSRF protection is not needed.
 - **Tenant logo SVGs are sanitized client-side.** `tenant_logo_svg` is user-controlled (trainer-uploaded), size-capped at 64KB at the DB level, and sanitized with DOMPurify (`USE_PROFILES: { svg: true, svgFilters: true }`) in `TenantBrandingComponent` before being trusted via `bypassSecurityTrustHtml`. This strips `<script>`, event handlers (`onload`, `onclick`, etc.), and `javascript:` URLs while preserving legitimate shape/path markup.
-- **CSP headers** (`Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) are set in `vercel.json` — they apply to the deployed Vercel site only, not local `ng serve`.
+- **CSP headers** (`Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) are set in `vercel.json` — they apply to the deployed Vercel site only, not local `ng serve`. `script-src 'self'` forbids inline scripts and event handlers, so the production build sets `optimization.styles.inlineCritical: false` in `angular.json` (Angular's critical-CSS `<link onload=…>` trick would otherwise leave `styles.css` unapplied). Run `pnpm build && pnpm check:csp` after changing build, font or script-loading config; Google Fonts files are allowed via `font-src https://fonts.gstatic.com`.
 
 ## Commit Attribution
 Never add a `Co-Authored-By: Claude ...` trailer (or any Claude/Anthropic attribution line) to commit messages or PR descriptions. See `.clouderule`.
