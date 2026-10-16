@@ -17,7 +17,7 @@ describe('route guards', () => {
 
   const run = async (guard: CanActivateFn): Promise<boolean | UrlTree> => {
     const result = invoke(guard);
-    expect(isObservable(result)).toBeTrue();
+    expect(isObservable(result)).toBe(true);
     const pending = firstValueFrom(result);
     TestBed.flushEffects();
     return pending;
@@ -37,7 +37,7 @@ describe('route guards', () => {
   describe('authGuard', () => {
     it('allows any authenticated user', async () => {
       asUser('free');
-      expect(await run(authGuard)).toBeTrue();
+      expect(await run(authGuard)).toBe(true);
     });
 
     it('redirects to /login without a profile', async () => {
@@ -53,23 +53,23 @@ describe('route guards', () => {
 
       TestBed.flushEffects();
       await Promise.resolve();
-      expect(settled).toBeFalse();
+      expect(settled).toBe(false);
 
       isLoading.set(false);
       TestBed.flushEffects();
-      expect(await pending).toBeTrue();
+      expect(await pending).toBe(true);
     });
   });
 
   describe('roleGuard', () => {
     it('allows a role in the allowed list', async () => {
       asUser('trainer');
-      expect(await run(roleGuard(['trainer']))).toBeTrue();
+      expect(await run(roleGuard(['trainer']))).toBe(true);
     });
 
     it('allows any of several roles', async () => {
       asUser('admin');
-      expect(await run(roleGuard(['free', 'admin']))).toBeTrue();
+      expect(await run(roleGuard(['free', 'admin']))).toBe(true);
     });
 
     it('redirects a role outside the allowed list', async () => {

@@ -14,7 +14,7 @@ describe('WorkoutService', () => {
 
   beforeEach(() => {
     tables = {};
-    const client = { from: jasmine.createSpy('from').and.callFake((t: string) => tables[t]) };
+    const client = { from: vi.fn((t: string) => tables[t]) };
     TestBed.configureTestingModule({ providers: [{ provide: SUPABASE_CLIENT, useValue: client }] });
     service = TestBed.inject(WorkoutService);
   });
