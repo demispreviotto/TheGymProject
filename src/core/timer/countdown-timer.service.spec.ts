@@ -1,16 +1,18 @@
-import { fakeAsync, flushMicrotasks, TestBed, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import type { Mock } from 'vitest';
 import { CountdownTimerService } from './countdown-timer.service';
 
 describe('CountdownTimerService', () => {
   let service: CountdownTimerService;
-  let sentinel: { release: jasmine.Spy; addEventListener: jasmine.Spy };
-  let request: jasmine.Spy;
+  let sentinel: { release: Mock; addEventListener: Mock };
+  let request: Mock;
   let hadWakeLock: boolean;
   let originalDescriptor: PropertyDescriptor | undefined;
 
   beforeEach(() => {
-    sentinel = { release: jasmine.createSpy('release').and.resolveTo(), addEventListener: jasmine.createSpy() };
-    request = jasmine.createSpy('request').and.resolveTo(sentinel);
+    vi.useFakeTimers();
+    sentinel = { release: vi.fn().mockResolvedValue(undefined), addEventListener: vi.fn() };
+    request = vi.fn().mockResolvedValue(sentinel);
     hadWakeLock = 'wakeLock' in navigator;
     originalDescriptor = Object.getOwnPropertyDescriptor(navigator, 'wakeLock');
     Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true });
@@ -19,99 +21,100 @@ describe('CountdownTimerService', () => {
 
   afterEach(() => {
     service.cancel();
+    vi.useRealTimers();
     if (originalDescriptor) Object.defineProperty(navigator, 'wakeLock', originalDescriptor);
     else if (!hadWakeLock) delete (navigator as unknown as Record<string, unknown>)['wakeLock'];
   });
 
   it('is inactive initially', () => {
     expect(service.secondsLeft()).toBeNull();
-    expect(service.isActive()).toBeFalse();
-    expect(service.isBlinking()).toBeFalse();
+    expect(service.isActive()).toBe(false);
+    expect(service.isBlinking()).toBe(false);
   });
 
-  it('start sets the duration, activates and opens fullscreen', fakeAsync(() => {
+  it('start sets the duration, activates and opens fullscreen', async () => {
     service.toggle();
     service.start(30);
     expect(service.secondsLeft()).toBe(30);
-    expect(service.isActive()).toBeTrue();
-    expect(service.isFullscreen()).toBeTrue();
+    expect(service.isActive()).toBe(true);
+    expect(service.isFullscreen()).toBe(true);
     service.cancel();
-    flushMicrotasks();
-  }));
+    await vi.advanceTimersByTimeAsync(0);
+  });
 
-  it('counts down once per second and finishes by itself', fakeAsync(() => {
+  it('counts down once per second and finishes by itself', async () => {
     service.start(3);
-    tick(1000);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(service.secondsLeft()).toBe(2);
-    tick(1000);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(service.secondsLeft()).toBe(1);
-    tick(1000);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(service.secondsLeft()).toBeNull();
-    expect(service.isActive()).toBeFalse();
-    flushMicrotasks();
-  }));
+    expect(service.isActive()).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+  });
 
-  it('blinks only during the last 5 seconds', fakeAsync(() => {
+  it('blinks only during the last 5 seconds', async () => {
     service.start(7);
-    expect(service.isBlinking()).toBeFalse();
-    tick(1000); // 6
-    expect(service.isBlinking()).toBeFalse();
-    tick(1000); // 5
-    expect(service.isBlinking()).toBeTrue();
+    expect(service.isBlinking()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000); // 6
+    expect(service.isBlinking()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000); // 5
+    expect(service.isBlinking()).toBe(true);
     service.cancel();
-    flushMicrotasks();
-  }));
+    await vi.advanceTimersByTimeAsync(0);
+  });
 
-  it('cancel stops the interval and clears state', fakeAsync(() => {
+  it('cancel stops the interval and clears state', async () => {
     service.start(10);
     service.cancel();
     expect(service.secondsLeft()).toBeNull();
-    tick(5000);
+    await vi.advanceTimersByTimeAsync(5000);
     expect(service.secondsLeft()).toBeNull();
-    flushMicrotasks();
-  }));
+    await vi.advanceTimersByTimeAsync(0);
+  });
 
-  it('starting a new timer replaces the previous one (no double ticking)', fakeAsync(() => {
+  it('starting a new timer replaces the previous one (no double ticking)', async () => {
     service.start(10);
-    tick(2000);
+    await vi.advanceTimersByTimeAsync(2000);
     service.start(20);
-    tick(1000);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(service.secondsLeft()).toBe(19);
     service.cancel();
-    flushMicrotasks();
-  }));
+    await vi.advanceTimersByTimeAsync(0);
+  });
 
   it('toggle flips fullscreen', () => {
-    expect(service.isFullscreen()).toBeTrue();
+    expect(service.isFullscreen()).toBe(true);
     service.toggle();
-    expect(service.isFullscreen()).toBeFalse();
+    expect(service.isFullscreen()).toBe(false);
     service.toggle();
-    expect(service.isFullscreen()).toBeTrue();
+    expect(service.isFullscreen()).toBe(true);
   });
 
   describe('wake lock', () => {
-    it('requests a screen lock on start and releases it on cancel', fakeAsync(() => {
+    it('requests a screen lock on start and releases it on cancel', async () => {
       service.start(10);
-      flushMicrotasks();
-      expect(request).toHaveBeenCalledOnceWith('screen');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(request).toHaveBeenCalledExactlyOnceWith('screen');
       service.cancel();
       expect(sentinel.release).toHaveBeenCalled();
-    }));
+    });
 
-    it('releases a lock that resolves after the timer was already cancelled', fakeAsync(() => {
+    it('releases a lock that resolves after the timer was already cancelled', async () => {
       service.start(10);
       service.cancel();
-      flushMicrotasks();
+      await vi.advanceTimersByTimeAsync(0);
       expect(sentinel.release).toHaveBeenCalled();
-    }));
+    });
 
-    it('keeps counting when the wake lock request is rejected', fakeAsync(() => {
-      request.and.rejectWith(new Error('denied'));
+    it('keeps counting when the wake lock request is rejected', async () => {
+      request.mockRejectedValue(new Error('denied'));
       service.start(5);
-      flushMicrotasks();
-      tick(1000);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(1000);
       expect(service.secondsLeft()).toBe(4);
       service.cancel();
-    }));
+    });
   });
 });
