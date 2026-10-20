@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../auth/auth.service';
@@ -13,16 +14,16 @@ describe('TenantService', () => {
   let service: TenantService;
   let tenants: QueryMock;
   let tenantSignal: ReturnType<typeof signal<Tenant | null>>;
-  let patchTenant: jasmine.Spy;
-  let theme: jasmine.SpyObj<ThemeService>;
+  let patchTenant: Mock;
+  let theme: Mocked<ThemeService>;
 
   const setup = (initial: Tenant | null, result: Parameters<typeof createQueryMock>[0] = { error: null }) => {
     tenants = createQueryMock(result);
     tenantSignal = signal(initial);
-    patchTenant = jasmine.createSpy('patchTenant').and.callFake((patch: Partial<Tenant>) =>
+    patchTenant = vi.fn((patch: Partial<Tenant>) =>
       tenantSignal.update(t => (t ? { ...t, ...patch } : t)),
     );
-    theme = jasmine.createSpyObj('ThemeService', ['applyFromTenant']);
+    theme = { applyFromTenant: vi.fn() } as unknown as Mocked<ThemeService>;
     TestBed.configureTestingModule({
       providers: [
         { provide: SUPABASE_CLIENT, useValue: createClientMock({ tenants }) },
@@ -50,7 +51,7 @@ describe('TenantService', () => {
     expect(tenants['update']).toHaveBeenCalledWith({ primary_hex: '#222222' });
     expect(tenants['eq']).toHaveBeenCalledWith('id', 't1');
     expect(patchTenant).toHaveBeenCalledWith({ primary_hex: '#222222' });
-    expect(theme.applyFromTenant).toHaveBeenCalledWith(jasmine.objectContaining({ primary_hex: '#222222' }));
+    expect(theme.applyFromTenant).toHaveBeenCalledWith(expect.objectContaining({ primary_hex: '#222222' }));
   });
 
   it('leaves auth state and theme untouched when the write fails', async () => {

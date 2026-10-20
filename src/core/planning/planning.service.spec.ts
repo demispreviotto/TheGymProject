@@ -35,7 +35,7 @@ describe('PlanningService', () => {
       setup({ plannings: createQueryMock({ data: [plan('a'), plan('b')] }) });
       await service.loadPlannings();
       expect(service.plannings().map(p => p.id)).toEqual(['a', 'b']);
-      expect(service.loading()).toBeFalse();
+      expect(service.loading()).toBe(false);
     });
 
     it('falls back to an empty list when no data comes back', async () => {
@@ -100,10 +100,10 @@ describe('PlanningService', () => {
       expect(tables['plannings']['insert']).toHaveBeenCalledWith({
         title: 'Push/Pull', use_auto_1rm: true, tenant_id: 'me',
       });
-      expect(tables['planning_days']['insert']).toHaveBeenCalledOnceWith({ planning_id: 'p1', day_number: 1 });
-      const rows = tables['prescribed_exercises']['insert'].calls.mostRecent().args[0];
+      expect(tables['planning_days']['insert']).toHaveBeenCalledExactlyOnceWith({ planning_id: 'p1', day_number: 1 });
+      const rows = tables['prescribed_exercises']['insert'].mock.lastCall![0];
       expect(rows.length).toBe(2);
-      expect(rows.every((r: { planning_day_id: string }) => r.planning_day_id === 'd1')).toBeTrue();
+      expect(rows.every((r: { planning_day_id: string }) => r.planning_day_id === 'd1')).toBe(true);
       expect(service.plannings().map(p => p.id)).toEqual(['p1']);
     });
 
@@ -237,8 +237,8 @@ describe('PlanningService', () => {
       service.plannings.set([plan('a')]);
       expect(await service.setShared('a', true)).toBe('rls');
       expect(await service.setSharedWithFriends('a', true)).toBe('rls');
-      expect(service.plannings()[0].is_shared_with_gym).toBeFalse();
-      expect(service.plannings()[0].is_shared_with_friends).toBeFalse();
+      expect(service.plannings()[0].is_shared_with_gym).toBe(false);
+      expect(service.plannings()[0].is_shared_with_friends).toBe(false);
     });
   });
 });

@@ -1,9 +1,10 @@
+import type { Mock } from 'vitest';
 export interface QueryResult {
   data?: unknown;
   error?: { message: string } | null;
 }
 
-export type QueryMock = Record<string, jasmine.Spy> & PromiseLike<QueryResult>;
+export type QueryMock = Record<string, Mock> & PromiseLike<QueryResult>;
 
 /**
  * Chainable, awaitable stand-in for a Supabase query builder. Every method
@@ -17,7 +18,7 @@ export function createQueryMock(
   result: QueryResult | QueryResult[] = { data: null, error: null },
 ): QueryMock {
   const queue = Array.isArray(result) ? [...result] : [result];
-  const spies = new Map<string, jasmine.Spy>();
+  const spies = new Map<string, Mock>();
   const next = (): QueryResult => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const proxy: QueryMock = new Proxy({} as QueryMock, {
@@ -27,7 +28,7 @@ export function createQueryMock(
       }
       let spy = spies.get(prop);
       if (!spy) {
-        spy = jasmine.createSpy(prop).and.callFake(() => proxy);
+        spy = vi.fn(() => proxy);
         spies.set(prop, spy);
       }
       return spy;
@@ -40,9 +41,9 @@ export function createQueryMock(
 export function createClientMock(
   tables: Record<string, QueryMock>,
   extras: Record<string, unknown> = {},
-): { from: jasmine.Spy } & Record<string, unknown> {
+): { from: Mock } & Record<string, unknown> {
   return {
-    from: jasmine.createSpy('from').and.callFake((table: string) => tables[table]),
+    from: vi.fn((table: string) => tables[table]),
     ...extras,
   };
 }

@@ -6,7 +6,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## Current Development State
 
-**Active Phase:** Phases 1–8.1 are complete and live. PWA support, push notifications and the Karma unit-test suite are also in place. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
+**Active Phase:** Phases 1–8.1 are complete and live. PWA support, push notifications and the Vitest unit-test suite are also in place. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
 
 | Phase | Status | Summary |
 |-------|--------|---------|
@@ -20,7 +20,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 | 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | Free/admin/trainer create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes; shared plans viewable read-only by friends; `/dashboard` open to all roles |
 | 8.1 — Rest Timer Component | ✅ Done | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; screen wake lock while running; `ngOnDestroy` cleanup |
 | PWA + Push | ✅ Done | Installable manifest, service worker (`ngsw-config.json`), update prompt, offline banner, iOS splash screens, Web Push for friend requests and invite decisions |
-| Tests | ✅ Done | Karma + Jasmine: `pnpm test` (watch) · `pnpm test:ci` (headless). Specs live next to the code as `*.spec.ts`; shared Supabase mock in `src/testing/supabase-mock.ts` |
+| Tests | ✅ Done | Vitest (via Angular's `@angular/build:unit-test` builder, jsdom): `pnpm test` (watch) · `pnpm test:ci` (single run). Use `vi.fn()` and `vi.useFakeTimers()` — zone.js `fakeAsync` does not work under Vitest. Specs live next to the code as `*.spec.ts`; shared Supabase mock in `src/testing/supabase-mock.ts` |
 
 **Branches:** `main` is production — protected, PR-only, and a merge deploys the frontend to Vercel. `dev` is the integration/testing branch; work lands there first and is promoted to `main` by PR. Database migrations and edge functions are deployed separately by hand (see Hard Stops).
 
