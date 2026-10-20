@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT } from '@angular/core';
 import type { Tenant } from '../auth/auth.types';
 import { ThemeService } from './theme.service';
 

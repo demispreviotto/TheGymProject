@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { LanguageService } from '../i18n/language.service';
@@ -15,23 +16,23 @@ const tenantRow = { id: 't1', primary_hex: '#112233' } as Tenant;
 
 describe('AuthService', () => {
   let service: AuthService;
-  let router: { url: string; navigate: jasmine.Spy };
-  let theme: jasmine.SpyObj<ThemeService>;
-  let lang: jasmine.SpyObj<LanguageService>;
+  let router: { url: string; navigate: Mock };
+  let theme: Mocked<ThemeService>;
+  let lang: Mocked<LanguageService>;
   let profiles: QueryMock;
   let listener: AuthListener;
-  let auth: Record<string, jasmine.Spy>;
+  let auth: Record<string, Mock>;
 
   const setup = (row: unknown, url = '/login') => {
     profiles = createQueryMock({ data: row });
-    router = { url, navigate: jasmine.createSpy('navigate') };
-    theme = jasmine.createSpyObj('ThemeService', ['applyFromTenant']);
-    lang = jasmine.createSpyObj('LanguageService', ['initFromProfile']);
+    router = { url, navigate: vi.fn() };
+    theme = { applyFromTenant: vi.fn() } as unknown as Mocked<ThemeService>;
+    lang = { initFromProfile: vi.fn() } as unknown as Mocked<LanguageService>;
     auth = {
-      onAuthStateChange: jasmine.createSpy().and.callFake((cb: AuthListener) => { listener = cb; }),
-      getUser: jasmine.createSpy().and.resolveTo({ data: { user: { id: 'u1' } } }),
-      signInWithPassword: jasmine.createSpy().and.resolveTo({ error: null }),
-      signOut: jasmine.createSpy().and.resolveTo({}),
+      onAuthStateChange: vi.fn((cb: AuthListener) => { listener = cb; }),
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
+      signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
+      signOut: vi.fn().mockResolvedValue({}),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -53,7 +54,7 @@ describe('AuthService', () => {
       expect(service.tenant()).toEqual(tenantRow);
       expect(theme.applyFromTenant).toHaveBeenCalledWith(tenantRow);
       expect(lang.initFromProfile).toHaveBeenCalled();
-      expect(service.isLoading()).toBeFalse();
+      expect(service.isLoading()).toBe(false);
     });
 
     it('treats a missing tenant as null', async () => {
@@ -67,7 +68,7 @@ describe('AuthService', () => {
       setup(null);
       await service.refreshProfile();
       expect(service.profile()).toBeNull();
-      expect(service.isLoading()).toBeFalse();
+      expect(service.isLoading()).toBe(false);
     });
   });
 
@@ -80,14 +81,14 @@ describe('AuthService', () => {
       it(`sends ${role} from /login to ${target}`, async () => {
         setup({ ...profileRow(role), tenant: null }, '/login');
         await service.refreshProfile();
-        expect(router.navigate).toHaveBeenCalledOnceWith([target]);
+        expect(router.navigate).toHaveBeenCalledExactlyOnceWith([target]);
       });
     }
 
     it('also redirects from the root url', async () => {
       setup({ ...profileRow('trainer'), tenant: null }, '/');
       await service.refreshProfile();
-      expect(router.navigate).toHaveBeenCalledOnceWith(['/trainer']);
+      expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/trainer']);
     });
 
     it('does not redirect when already on another page', async () => {
@@ -102,7 +103,7 @@ describe('AuthService', () => {
       setup(null);
       service.initialize();
       listener('PASSWORD_RECOVERY', null);
-      expect(router.navigate).toHaveBeenCalledOnceWith(['/reset-password']);
+      expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/reset-password']);
       expect(profiles['select']).not.toHaveBeenCalled();
     });
 
@@ -116,7 +117,7 @@ describe('AuthService', () => {
       } finally {
         window.location.hash = previous;
       }
-      expect(router.navigate).toHaveBeenCalledOnceWith(['/register']);
+      expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/register']);
       expect(profiles['select']).not.toHaveBeenCalled();
     });
 
@@ -127,7 +128,7 @@ describe('AuthService', () => {
       listener('SIGNED_OUT', null);
       expect(service.profile()).toBeNull();
       expect(service.tenant()).toBeNull();
-      expect(service.isLoading()).toBeFalse();
+      expect(service.isLoading()).toBe(false);
     });
   });
 
@@ -135,7 +136,7 @@ describe('AuthService', () => {
     it('signIn returns null on success and the message on failure', async () => {
       setup(null);
       expect(await service.signIn('a@b.c', 'pw')).toBeNull();
-      auth['signInWithPassword'].and.resolveTo({ error: { message: 'bad creds' } });
+      auth['signInWithPassword'].mockResolvedValue({ error: { message: 'bad creds' } });
       expect(await service.signIn('a@b.c', 'pw')).toBe('bad creds');
     });
 

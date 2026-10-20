@@ -1,5 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, Injectable, signal, computed, inject } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class CountdownTimerService {

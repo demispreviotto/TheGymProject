@@ -32,7 +32,7 @@ describe('ExerciseService', () => {
       expect(exercises['or']).toHaveBeenCalledWith('tenant_id.is.null,tenant_id.eq.me');
       expect(exercises['order']).toHaveBeenCalledWith('name');
       expect(service.exercises().length).toBe(2);
-      expect(service.loading()).toBeFalse();
+      expect(service.loading()).toBe(false);
     });
 
     it('falls back to an empty list', async () => {
