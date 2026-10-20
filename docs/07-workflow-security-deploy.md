@@ -2,6 +2,8 @@
 
 [Back to index](./IMPROVEMENTS.md)
 
+> **Status update (Oct 2026):** the CI pipeline (section 1) is live in `.github/workflows/ci.yml` — it differs from the sample below (it also runs `check:csp` and applies all migrations to a fresh Supabase stack). `dev` and `main` are protected by GitHub rulesets that require the **Build & test** and **Migrations** jobs; only merge commits are allowed. Actions must be pinned to full commit SHAs. See the Branches/CI notes in `CLAUDE.md` for the current flow.
+
 ---
 
 This doc covers three areas that don't have enough material for their own file: developer workflow conventions, security hardening, and the deployment pipeline.
