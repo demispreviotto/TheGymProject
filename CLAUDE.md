@@ -22,7 +22,11 @@ This file serves as the definitive single source of truth for the Gym Planificac
 | PWA + Push | ✅ Done | Installable manifest, service worker (`ngsw-config.json`), update prompt, offline banner, iOS splash screens, Web Push for friend requests and invite decisions |
 | Tests | ✅ Done | Vitest (via Angular's `@angular/build:unit-test` builder, jsdom): `pnpm test` (watch) · `pnpm test:ci` (single run). Use `vi.fn()` and `vi.useFakeTimers()` — zone.js `fakeAsync` does not work under Vitest. Specs live next to the code as `*.spec.ts`; shared Supabase mock in `src/testing/supabase-mock.ts` |
 
-**Branches:** `main` is production — protected, PR-only, and a merge deploys the frontend to Vercel. `dev` is the integration/testing branch; work lands there first and is promoted to `main` by PR. Database migrations and edge functions are deployed separately by hand (see Hard Stops).
+**Branches:** `main` is production and `dev` is the integration branch. Both are protected by GitHub rulesets: PR-only, no force-push or deletion, and the CI jobs **Build & test** and **Migrations** must pass before a merge (`main` also needs 1 approval; the repo admin can bypass it on PRs, `dev` has no bypass). Only merge commits are allowed, and merged head branches are deleted automatically.
+
+**Flow:** branch off `dev` (`feat/*`, `fix/*`, `chore/*`, `docs/*`) → PR into `dev` → release PR `dev` → `main` ("Release: promote dev to main"). A merge to `main` deploys the frontend to Vercel; it does **not** run migrations. Database migrations and edge functions are deployed separately by hand, before the release merge when it contains migrations (see Hard Stops).
+
+**CI** (`.github/workflows/ci.yml`, on PRs to `dev`/`main`): production build, `pnpm check:csp`, `pnpm test:ci`, and a job that applies every migration to a fresh local Supabase stack. The repo only allows GitHub Actions pinned to a full commit SHA, so pin any new action (and keep the `# vX` comment). `scripts/generate-env.mjs` fails the build in CI/Vercel when `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing.
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -58,7 +62,7 @@ Before running any production command, state clearly: _"This will affect product
   - `shared/`: Dumb UI primitives, utility pipes, and stateless helpers.
 
 ## 1. Technical Stack Overview
-- **Frontend Framework:** Angular (Latest, Standalone Components, Signal-based reactivity)
+- **Frontend Framework:** Angular 20 (Standalone Components, Signal-based reactivity)
 - **Tooling:** Angular Application Builder (esbuild for production, Vite for internal development server)
 - **UI Architecture:** Tailwind CSS + Spartan UI (Radix primitives for Angular)
 - **Backend/Database:** Supabase (PostgreSQL with Row-Level Security)
@@ -303,7 +307,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Purpose |
 |------|---------|
 | `auth/auth.types.ts` | `UserRole` type + `Profile` interface (full column set including `assigned_planning_id`, `is_active`) |
-| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` |
+| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole`. `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
+| `auth/auth-errors.ts` | `isServiceUnavailable(error)` — true for `AuthRetryableFetchError` or any 5xx; keeps raw gateway errors out of the UI |
 | `guards/role.guard.ts` | `authGuard` (any authenticated user) + `roleGuard(roles[])` — both async via `toObservable(isLoading)` |
 | `supabase/supabase.client.ts` | `SUPABASE_CLIENT` InjectionToken |
 | `theme/theme.service.ts` | Hex→HSL conversion; injects `--tenant-*` CSS custom properties |
