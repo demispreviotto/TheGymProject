@@ -2,6 +2,8 @@
 
 [Back to index](./IMPROVEMENTS.md)
 
+> **Status update (Oct 2026):** the framework setup below is done. Unit tests run on **Vitest** through Angular's `@angular/build:unit-test` builder (jsdom, no browser), not the Karma/Jasmine setup this doc was written against. There are 11 spec files (129 tests) covering the core services, guards and timer, with a shared Supabase mock in `src/testing/supabase-mock.ts`. Still open: component tests, Playwright E2E and RLS policy tests. Gotcha: zone.js `fakeAsync` does not work under Vitest — use `vi.useFakeTimers()`.
+
 ---
 
 ## Current State

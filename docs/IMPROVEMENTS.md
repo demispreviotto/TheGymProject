@@ -18,8 +18,8 @@ The project is solid. Signal-based state management, clean service/component sep
 
 | Gap | Why It Matters |
 |-----|---------------|
-| Zero test files (`.spec.ts`) | No safety net for regressions |
-| No CI pipeline | Vercel deploys from `main` with no checks |
+| ~~Zero test files (`.spec.ts`)~~ — **done**: 11 Vitest spec files, 129 tests | Covered; add Tier 2 / component / RLS tests over time |
+| ~~No CI pipeline~~ — **done**: `.github/workflows/ci.yml` + branch rulesets on `dev`/`main` | Covered |
 | Missing error recovery | Errors are shown to the user but state isn't rolled back |
 | Two oversized components (500+ lines each) | Hard to maintain and review |
 | No Supabase type generation | Unsafe `as` casts everywhere — schema drift won't be caught |
