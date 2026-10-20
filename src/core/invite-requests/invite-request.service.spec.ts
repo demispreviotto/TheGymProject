@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../auth/auth.service';
@@ -12,12 +13,12 @@ const req = (id: string, status: InviteRequest['status'], requester = 'u1'): Inv
 describe('InviteRequestService', () => {
   let service: InviteRequestService;
   let tables: Record<string, QueryMock>;
-  let invoke: jasmine.Spy;
+  let invoke: Mock;
   const profile = signal<Profile | null>({ id: 'me' } as Profile);
 
   const setup = (t: Record<string, QueryMock>) => {
     tables = t;
-    invoke = jasmine.createSpy('invoke').and.resolveTo({ error: null });
+    invoke = vi.fn().mockResolvedValue({ error: null });
     TestBed.configureTestingModule({
       providers: [
         { provide: SUPABASE_CLIENT, useValue: createClientMock(tables, { functions: { invoke } }) },
@@ -29,7 +30,7 @@ describe('InviteRequestService', () => {
 
   beforeEach(() => {
     profile.set({ id: 'me' } as Profile);
-    spyOn(console, 'log'); // loadAllRequests logs debug output
+    vi.spyOn(console, 'log').mockImplementation(() => undefined); // loadAllRequests logs debug output
   });
 
   describe('computed counters', () => {
@@ -123,7 +124,7 @@ describe('InviteRequestService', () => {
       expect(await service.approveRequest('r1', 'a@x.io')).toBeNull();
 
       expect(invoke).toHaveBeenCalledWith('invite-client', { body: { email: 'a@x.io', role: 'free' } });
-      const patch = tables['invite_requests']['update'].calls.mostRecent().args[0];
+      const patch = tables['invite_requests']['update'].mock.lastCall![0];
       expect(patch.status).toBe('approved');
       expect(patch.reviewer_id).toBe('me');
       expect(Date.parse(patch.reviewed_at)).not.toBeNaN();
@@ -132,7 +133,7 @@ describe('InviteRequestService', () => {
 
     it('does not update the request when the invite email fails', async () => {
       setup({ invite_requests: createQueryMock() });
-      invoke.and.resolveTo({ error: { message: 'smtp down' } });
+      invoke.mockResolvedValue({ error: { message: 'smtp down' } });
       expect(await service.approveRequest('r1', 'a@x.io')).toBe('smtp down');
       expect(tables['invite_requests']['update']).not.toHaveBeenCalled();
     });
@@ -147,14 +148,14 @@ describe('InviteRequestService', () => {
     it('stores the reviewer note', async () => {
       setup({ invite_requests: createQueryMock([{ error: null }, { data: [] }]) });
       expect(await service.rejectRequest('r1', 'not now')).toBeNull();
-      const patch = tables['invite_requests']['update'].calls.mostRecent().args[0];
-      expect(patch).toEqual(jasmine.objectContaining({ status: 'rejected', reviewer_id: 'me', reviewer_note: 'not now' }));
+      const patch = tables['invite_requests']['update'].mock.lastCall![0];
+      expect(patch).toEqual(expect.objectContaining({ status: 'rejected', reviewer_id: 'me', reviewer_note: 'not now' }));
     });
 
     it('stores a null note when none is given', async () => {
       setup({ invite_requests: createQueryMock([{ error: null }, { data: [] }]) });
       await service.rejectRequest('r1');
-      expect(tables['invite_requests']['update'].calls.mostRecent().args[0].reviewer_note).toBeNull();
+      expect(tables['invite_requests']['update'].mock.lastCall![0].reviewer_note).toBeNull();
     });
 
     it('returns the update error', async () => {
