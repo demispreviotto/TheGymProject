@@ -183,6 +183,12 @@ export const dictionary = {
   'branding.logo.set':       { en: 'Custom logo uploaded',             es: 'Logo personalizado cargado' },
   'branding.logo.empty':     { en: 'No logo set',                      es: 'Sin logo configurado' },
   'branding.color.invalid':  { en: 'Enter a valid hex color (e.g. #EF4444)', es: 'Ingresa un color hex válido (ej. #EF4444)' },
+
+  // Auth errors
+  'auth.error.unavailable':  {
+    en: "We can't reach the server right now. Please try again in a few minutes.",
+    es: 'No podemos conectar con el servidor en este momento. Inténtalo de nuevo en unos minutos.',
+  },
 } satisfies Record<string, Record<Language, string>>;
 
 export function translate(key: string, lang: Language): string {
