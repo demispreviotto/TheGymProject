@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { ThemeService } from '../theme/theme.service';
 import { LanguageService } from '../i18n/language.service';
+import { isServiceUnavailable, type AuthFailure } from './auth-errors';
 import type { Profile, Tenant } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
@@ -50,7 +51,11 @@ export class AuthService {
 
   async signIn(email: string, password: string): Promise<string | null> {
     const { error } = await this.supabase.auth.signInWithPassword({ email, password });
-    return error?.message ?? null;
+    return error ? this.describeError(error) : null;
+  }
+
+  private describeError(error: AuthFailure): string {
+    return isServiceUnavailable(error) ? this.lang.t('auth.error.unavailable') : error.message;
   }
 
   async signUp(email: string, password: string, name: string): Promise<string | null> {
@@ -59,7 +64,7 @@ export class AuthService {
       password,
       options: { data: { name } },
     });
-    if (error) return error.message;
+    if (error) return this.describeError(error);
     if (data.user) await this.upsertProfile(data.user.id, email, name);
     return null;
   }

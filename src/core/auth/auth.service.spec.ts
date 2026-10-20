@@ -27,7 +27,7 @@ describe('AuthService', () => {
     profiles = createQueryMock({ data: row });
     router = { url, navigate: vi.fn() };
     theme = { applyFromTenant: vi.fn() } as unknown as Mocked<ThemeService>;
-    lang = { initFromProfile: vi.fn() } as unknown as Mocked<LanguageService>;
+    lang = { initFromProfile: vi.fn(), t: vi.fn((key: string) => `t:${key}`) } as unknown as Mocked<LanguageService>;
     auth = {
       onAuthStateChange: vi.fn((cb: AuthListener) => { listener = cb; }),
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
@@ -138,6 +138,30 @@ describe('AuthService', () => {
       expect(await service.signIn('a@b.c', 'pw')).toBeNull();
       auth['signInWithPassword'].mockResolvedValue({ error: { message: 'bad creds' } });
       expect(await service.signIn('a@b.c', 'pw')).toBe('bad creds');
+    });
+
+    it('signIn keeps the API message for a rejected login (4xx)', async () => {
+      setup(null);
+      auth['signInWithPassword'].mockResolvedValue({
+        error: { name: 'AuthApiError', status: 400, message: 'Invalid login credentials' },
+      });
+      expect(await service.signIn('a@b.c', 'pw')).toBe('Invalid login credentials');
+    });
+
+    it('signIn returns the translated "unavailable" message for a gateway error', async () => {
+      setup(null);
+      auth['signInWithPassword'].mockResolvedValue({
+        error: { name: 'AuthRetryableFetchError', status: 504, message: '{}' },
+      });
+      expect(await service.signIn('a@b.c', 'pw')).toBe('t:auth.error.unavailable');
+    });
+
+    it('signIn returns the translated "unavailable" message when the network fails', async () => {
+      setup(null);
+      auth['signInWithPassword'].mockResolvedValue({
+        error: { name: 'AuthRetryableFetchError', status: 0, message: 'Failed to fetch' },
+      });
+      expect(await service.signIn('a@b.c', 'pw')).toBe('t:auth.error.unavailable');
     });
 
     it('signOut clears state and navigates to /login', async () => {
