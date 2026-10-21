@@ -1,10 +1,11 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, signal, computed, input, booleanAttribute } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlanningService } from '../../../../core/planning/planning.service';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { ToggleComponent } from '../../../../shared/components/toggle/toggle.component';
+import { headerClass } from '../../../../shared/components/snap-panels/embedded-header';
 import { formatDate } from '../../../../shared/utils/format';
 import { copyWithTimeout } from '../../../../shared/utils/share';
 import type { Planning } from '../../../../core/planning/planning.types';
@@ -17,14 +18,14 @@ import type { Planning } from '../../../../core/planning/planning.types';
   template: `
     <div class="space-y-4">
 
-      <div class="flex items-center justify-between">
+      <div [class]="header()">
         <div>
-          <h1 class="text-xl font-semibold">{{ 'planning.title' | translate }}</h1>
+          <h1 class="text-xl font-semibold" [attr.aria-level]="embedded() ? 2 : null">{{ 'planning.title' | translate }}</h1>
           <p class="text-sm text-neutral-400 mt-0.5">{{ service.plannings().length }} {{ 'planning.subtitle' | translate }}</p>
         </div>
         <button
           (click)="router.navigate(['/trainer/planning/new'])"
-          class="px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
+          class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
         >
           {{ 'planning.new' | translate }}
         </button>
@@ -109,6 +110,10 @@ import type { Planning } from '../../../../core/planning/planning.types';
   `,
 })
 export class PlanningListComponent implements OnInit {
+  /** Shown inside a SnapPanels panel: the header sticks to the top of the scrolling area. */
+  readonly embedded = input(false, { transform: booleanAttribute });
+  readonly header = computed(() => headerClass(this.embedded(), 'flex items-center justify-between'));
+
   readonly service = inject(PlanningService);
   readonly router = inject(Router);
 

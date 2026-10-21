@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy, computed, signal, input } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, computed, signal, input, booleanAttribute } from '@angular/core';
 import { Router } from '@angular/router';
 import { LowerCasePipe } from '@angular/common';
 import { ExerciseService } from '../../../../core/exercises/exercise.service';
@@ -6,6 +6,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ExerciseEditSheetComponent } from '../exercise-edit-sheet/exercise-edit-sheet.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { headerClass } from '../../../../shared/components/snap-panels/embedded-header';
 import type { Exercise } from '../../../../core/planning/planning.types';
 
 @Component({
@@ -16,9 +17,9 @@ import type { Exercise } from '../../../../core/planning/planning.types';
   template: `
     <div class="space-y-4">
 
-      <div class="flex items-center justify-between">
+      <div [class]="header()">
         <div>
-          <h1 class="text-xl font-semibold">{{ titleKey() | translate }}</h1>
+          <h1 class="text-xl font-semibold" [attr.aria-level]="embedded() ? 2 : null">{{ titleKey() | translate }}</h1>
           <p class="text-sm text-neutral-400 mt-0.5">
             {{ ownedExercises().length }} {{ 'exercises.library' | translate | lowercase }}
             · {{ globalExercises().length }} {{ 'exercises.global' | translate | lowercase }}
@@ -26,7 +27,7 @@ import type { Exercise } from '../../../../core/planning/planning.types';
         </div>
         <button
           (click)="router.navigate([newRoute()])"
-          class="px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
+          class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
         >
           {{ 'exercises.new' | translate }}
         </button>
@@ -109,6 +110,10 @@ export class ExerciseListComponent implements OnInit {
 
   readonly titleKey = input<string>('exercises.title');
   readonly newRoute = input<string>('/trainer/exercises/new');
+
+  /** Shown inside a SnapPanels panel: the header sticks to the top of the scrolling area. */
+  readonly embedded = input(false, { transform: booleanAttribute });
+  readonly header = computed(() => headerClass(this.embedded(), 'flex items-center justify-between'));
 
   readonly selectedExercise = signal<Exercise | null>(null);
 

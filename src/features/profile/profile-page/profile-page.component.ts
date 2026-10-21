@@ -4,9 +4,11 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { TenantService } from '../../../core/tenant/tenant.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
+import { LanguageService } from '../../../core/i18n/language.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import { PushToggleComponent } from '../push-toggle/push-toggle.component';
-import type { UserRole } from '../../../core/auth/auth.types';
+import type { Language, UserRole } from '../../../core/auth/auth.types';
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
@@ -14,7 +16,7 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
   selector: 'app-profile-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, PushToggleComponent],
+  imports: [FormsModule, TranslatePipe, AppIconComponent, PushToggleComponent],
   template: `
     <div class="max-w-lg space-y-6">
       <h1 class="text-xl font-bold text-neutral-100">{{ 'profile.title' | translate }}</h1>
@@ -246,11 +248,49 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
           }
         </div>
       }
+
+      <!-- Language -->
+      <section class="rounded-xl border border-neutral-800 bg-neutral-900">
+        <div class="px-5 py-4 border-b border-neutral-800">
+          <h2 class="text-sm font-semibold text-neutral-100">{{ 'profile.language' | translate }}</h2>
+        </div>
+        <div class="grid grid-cols-2 gap-2 p-4" role="group" [attr.aria-label]="'profile.language' | translate">
+          @for (option of languages; track option.code) {
+            <button
+              type="button"
+              (click)="setLanguage(option.code)"
+              [attr.aria-pressed]="isLanguage(option.code)"
+              [class]="languageClass(option.code)"
+            >
+              {{ option.label }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Session -->
+      <section class="rounded-xl border border-neutral-800 bg-neutral-900">
+        <div class="px-5 py-4 border-b border-neutral-800">
+          <h2 class="text-sm font-semibold text-neutral-100">{{ 'profile.session' | translate }}</h2>
+        </div>
+        <div class="space-y-3 p-4">
+          <p class="text-xs text-neutral-500">{{ 'profile.signout.hint' | translate }}</p>
+          <button
+            type="button"
+            (click)="signOut()"
+            class="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+          >
+            <app-icon name="arrow-right-from-bracket" iconClass="w-5 h-5 fill-current" />
+            {{ 'nav.signout' | translate }}
+          </button>
+        </div>
+      </section>
     </div>
   `,
 })
 export class ProfilePageComponent implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly language = inject(LanguageService);
   private readonly tenantService = inject(TenantService);
   private readonly theme = inject(ThemeService);
   readonly inviteService = inject(InviteRequestService);
@@ -272,8 +312,32 @@ export class ProfilePageComponent implements OnInit {
   readonly inviteError = signal<string | null>(null);
   readonly inviteSuccess = signal(false);
 
+  readonly languages: readonly { code: Language; label: string }[] = [
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español' },
+  ];
+
   async ngOnInit(): Promise<void> {
     if (this.isFree()) await this.inviteService.loadMyRequests();
+  }
+
+  isLanguage(code: Language): boolean {
+    return this.language.activeLanguage() === code;
+  }
+
+  languageClass(code: Language): string {
+    const base = 'flex h-12 items-center justify-center rounded-xl text-sm font-semibold transition-colors';
+    return this.isLanguage(code)
+      ? `${base} bg-tenant-primary text-tenant-contrast`
+      : `${base} bg-neutral-800 text-neutral-300 hover:bg-neutral-700`;
+  }
+
+  setLanguage(code: Language): void {
+    void this.language.setLanguage(code);
+  }
+
+  signOut(): void {
+    void this.auth.signOut();
   }
 
   async submitInviteRequest(): Promise<void> {

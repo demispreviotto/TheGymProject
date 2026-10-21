@@ -1,9 +1,10 @@
 import {
-  Component, inject, signal, OnInit, ChangeDetectionStrategy,
+  Component, inject, signal, computed, input, booleanAttribute, OnInit, ChangeDetectionStrategy,
 } from '@angular/core';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
+import { headerClass } from '../../../shared/components/snap-panels/embedded-header';
 import type { InviteRequest } from '../../../core/invite-requests/invite-request.service';
 
 @Component({
@@ -13,9 +14,9 @@ import type { InviteRequest } from '../../../core/invite-requests/invite-request
   imports: [TranslatePipe, SkeletonComponent],
   template: `
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div [class]="header()">
         <div>
-          <h1 class="text-xl font-bold text-neutral-100">{{ 'admin.requests.title' | translate }}</h1>
+          <h1 class="text-xl font-bold text-neutral-100" [attr.aria-level]="embedded() ? 2 : null">{{ 'admin.requests.title' | translate }}</h1>
           <p class="text-sm text-neutral-500 mt-0.5">
             {{ inviteService.pendingCount() }} pending
           </p>
@@ -27,32 +28,32 @@ import type { InviteRequest } from '../../../core/invite-requests/invite-request
       } @else if (inviteService.allRequests().length === 0) {
         <p class="text-sm text-neutral-500">{{ 'admin.requests.empty' | translate }}</p>
       } @else {
-        <div class="rounded-xl border border-neutral-800 overflow-hidden">
+        <div class="rounded-xl border border-neutral-800 overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-neutral-800 bg-neutral-900">
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ 'admin.requests.requester' | translate }}</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden sm:table-cell">{{ 'admin.requests.invitee' | translate }}</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden lg:table-cell">{{ 'admin.requests.reason' | translate }}</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Status</th>
-                <th class="px-4 py-3"></th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ 'admin.requests.requester' | translate }}</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden sm:table-cell">{{ 'admin.requests.invitee' | translate }}</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden lg:table-cell">{{ 'admin.requests.reason' | translate }}</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Status</th>
+                <th class="px-3 sm:px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               @for (req of inviteService.allRequests(); track req.id) {
                 <tr class="border-b border-neutral-800 last:border-0">
-                  <td class="px-4 py-3">
+                  <td class="px-3 sm:px-4 py-3">
                     <p class="font-medium text-neutral-100">{{ req.requester?.name ?? '—' }}</p>
                     <p class="text-xs text-neutral-500">{{ req.requester?.email ?? req.requester_id }}</p>
                   </td>
-                  <td class="px-4 py-3 hidden sm:table-cell">
+                  <td class="px-3 sm:px-4 py-3 hidden sm:table-cell">
                     <p class="text-neutral-200">{{ req.invitee_name }}</p>
                     <p class="text-xs text-neutral-500">{{ req.invitee_email }}</p>
                   </td>
-                  <td class="px-4 py-3 hidden lg:table-cell">
+                  <td class="px-3 sm:px-4 py-3 hidden lg:table-cell">
                     <p class="text-neutral-400 text-xs max-w-xs truncate" [title]="req.reason">{{ req.reason }}</p>
                   </td>
-                  <td class="px-4 py-3">
+                  <td class="px-3 sm:px-4 py-3">
                     <span [class]="statusClass(req.status)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium">
                       {{ statusLabel(req.status) }}
                     </span>
@@ -60,7 +61,7 @@ import type { InviteRequest } from '../../../core/invite-requests/invite-request
                       <p class="text-xs text-neutral-600 mt-0.5 max-w-[120px] truncate" [title]="req.reviewer_note">{{ req.reviewer_note }}</p>
                     }
                   </td>
-                  <td class="px-4 py-3">
+                  <td class="px-3 sm:px-4 py-3">
                     @if (req.status === 'pending') {
                       <div class="flex gap-2 justify-end">
                         <button
@@ -95,6 +96,10 @@ import type { InviteRequest } from '../../../core/invite-requests/invite-request
 })
 export class AdminInviteRequestsComponent implements OnInit {
   readonly inviteService = inject(InviteRequestService);
+
+  /** Shown inside a SnapPanels panel: the header sticks to the top of the scrolling area. */
+  readonly embedded = input(false, { transform: booleanAttribute });
+  readonly header = computed(() => headerClass(this.embedded()));
 
   readonly loading = signal(true);
   readonly processingId = signal<string | null>(null);
