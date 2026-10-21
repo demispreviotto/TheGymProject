@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { FriendshipService } from '../../../core/friendships/friendship.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
+import { CountdownTimerService } from '../../../core/timer/countdown-timer.service';
 import { TenantBrandingComponent } from '../../../shared/components/tenant-branding/tenant-branding.component';
 import { CountdownTimerComponent } from '../../../shared/components/countdown-timer/countdown-timer.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
@@ -105,12 +106,13 @@ import { isMoreActive, navItemsForRole } from './nav-items';
     }
   `],
 })
-export class AppShellComponent implements OnInit {
+export class AppShellComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly langService = inject(LanguageService);
   private readonly friendships = inject(FriendshipService);
   private readonly inviteRequests = inject(InviteRequestService);
   private readonly router = inject(Router);
+  private readonly restTimer = inject(CountdownTimerService);
 
   /** Current page, as a signal: router events are an async stream, converted at the boundary. */
   private readonly currentUrl = toSignal(
@@ -147,6 +149,11 @@ export class AppShellComponent implements OnInit {
   ngOnInit(): void {
     if (this.isFreeOrAdmin()) void this.friendships.load();
     if (this.isAdmin()) void this.inviteRequests.loadAllRequests();
+  }
+
+  /** The shell lives as long as the session: a rest timer survives page changes but not signing out. */
+  ngOnDestroy(): void {
+    this.restTimer.cancel();
   }
 
   langBtnClass(lang: Language): string {
