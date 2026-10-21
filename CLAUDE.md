@@ -6,7 +6,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 ## Current Development State
 
-**Active Phase:** Phases 1–8.1 are complete and live. PWA support, push notifications and the Vitest unit-test suite are also in place. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
+**Active Phase:** Phases 1–8.2 are complete. PWA support, push notifications and the Vitest unit-test suite are also in place. Phase 9 (Corporate Gym tier) is conceptual/unscheduled.
 
 | Phase | Status | Summary |
 |-------|--------|---------|
@@ -19,6 +19,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 | 7 — Invitation & Access Control | ✅ Done | RegisterComponent, trainer invites, admin portal, free-user invite requests, `invite_requests` table, `admin` role |
 | 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | Free/admin/trainer create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes; shared plans viewable read-only by friends; `/dashboard` open to all roles |
 | 8.1 — Rest Timer Component | ✅ Done | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; screen wake lock while running; keeps running across page changes (the toast stays visible) and is cancelled only when the shell is destroyed, i.e. on sign-out |
+| 8.2 — Mobile-First Redesign | ✅ Done | Stitch-style workout dashboard (accordion cards, `+/-` steppers, per-round completion with auto-rest, pre-filled inputs, workout draft in localStorage, session duration); floating bottom tab bar + avatar → Profile (no mobile drawer; language and sign-out on Profile); `SnapPanelsComponent` and merged pages (`/admin`, `/my-plan`, `/trainer`); rest timer `+30s` that survives page changes; Phosphor `lockers` app icon. Details in `plan.md` Phase 8.2 |
 | PWA + Push | ✅ Done | Installable manifest, service worker (`ngsw-config.json`), update prompt, offline banner, iOS splash screens, Web Push for friend requests and invite decisions |
 | Tests | ✅ Done | Vitest (via Angular's `@angular/build:unit-test` builder, jsdom): `pnpm test` (watch) · `pnpm test:ci` (single run). Use `vi.fn()` and `vi.useFakeTimers()` — zone.js `fakeAsync` does not work under Vitest. Specs live next to the code as `*.spec.ts`; shared Supabase mock in `src/testing/supabase-mock.ts` |
 
@@ -307,7 +308,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Purpose |
 |------|---------|
 | `auth/auth.types.ts` | `UserRole` type + `Profile` interface (full column set including `assigned_planning_id`, `is_active`) |
-| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole`. `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
+| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` (only redirects to the role home from `/login` or `/`, and reads the **pending** navigation via `currentPath()`: on a reload the guards hold the initial navigation, so `router.url` is still `/`, and reading it threw the deep link away). `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
 | `auth/auth-errors.ts` | `isServiceUnavailable(error)` — true for `AuthRetryableFetchError` or any 5xx; keeps raw gateway errors out of the UI |
 | `guards/role.guard.ts` | `authGuard` (any authenticated user) + `roleGuard(roles[])` — both async via `toObservable(isLoading)` |
 | `supabase/supabase.client.ts` | `SUPABASE_CLIENT` InjectionToken |
@@ -357,7 +358,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `auth/register/register.component.ts` | `/register` | public (invite link) |
-| `admin/admin-page/admin-page.component.ts` | `/admin` (`/admin/requests` and `/admin/users` redirect here) | admin — invite requests and users on one page, as two snap panels |
+| `admin/admin-page/admin-page.component.ts` | `/admin` (`/admin/requests` and `/admin/users` redirect here) | admin — invite requests and users on one page, switched between one at a time (snap panels with `allowSplit` off, Requests by default) |
 | `admin/invite-requests/admin-invite-requests.component.ts` | *(panel of `/admin`)* | admin — `embedded` input makes its header sticky inside the panel |
 | `admin/users/admin-users.component.ts` | *(panel of `/admin`)* | admin — `embedded` input, as above |
 | `free/my-plan-shell/my-plan-shell.component.ts` | `/my-plan` (bare router-outlet) | free · admin |
