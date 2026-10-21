@@ -4,8 +4,6 @@ export type TranslationKey = keyof typeof dictionary;
 
 export const dictionary = {
   // Navigation
-  'nav.exercises':        { en: 'Exercises',        es: 'Ejercicios' },
-  'nav.plans':            { en: 'Training Plans',   es: 'Planes de Entrenamiento' },
   'nav.clients':          { en: 'Clients',           es: 'Clientes' },
   'nav.workout':          { en: "Today's Workout",  es: 'Entrenamiento de Hoy' },
   'nav.profile':          { en: 'Profile',           es: 'Perfil' },
@@ -16,7 +14,6 @@ export const dictionary = {
 
   // Mobile bottom tab bar (short labels)
   'tab.workout':          { en: 'Workout',           es: 'Entrenar' },
-  'tab.exercises':        { en: 'Exercises',         es: 'Ejercicios' },
   'tab.plans':            { en: 'Plans',             es: 'Planes' },
   'tab.clients':          { en: 'Clients',           es: 'Clientes' },
   'tab.friends':          { en: 'Friends',           es: 'Amigos' },

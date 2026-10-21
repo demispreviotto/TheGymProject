@@ -15,7 +15,7 @@ describe('navItemsForRole (the bottom tab bar)', () => {
   it('gives every role its pages in order, without Profile', () => {
     expect(routes('user')).toEqual(['/dashboard']);
     expect(routes('free')).toEqual(['/dashboard', '/my-plan', '/my-plan/friends']);
-    expect(routes('trainer')).toEqual(['/dashboard', '/trainer/exercises', '/trainer/planning', '/trainer/clients']);
+    expect(routes('trainer')).toEqual(['/dashboard', '/trainer', '/trainer/clients']);
     expect(routes('admin')).toEqual(['/dashboard', '/admin', '/my-plan', '/my-plan/friends']);
   });
 
@@ -107,6 +107,14 @@ describe('isNavItemActive', () => {
     expect(activeInSidebar('free', '/my-plan/planning/abc-123')).toEqual(['/my-plan']);
     expect(activeInSidebar('free', '/my-plan/exercises/new')).toEqual(['/my-plan']);
     expect(activeInSidebar('free', '/my-plan/friends')).toEqual(['/my-plan/friends']);
+  });
+
+  it('lights up the trainer library for its pages and forms, but not for the clients page', () => {
+    expect(activeInSidebar('trainer', '/trainer')).toEqual(['/trainer']);
+    expect(activeInSidebar('trainer', '/trainer/exercises/new')).toEqual(['/trainer']);
+    expect(activeInSidebar('trainer', '/trainer/planning/new')).toEqual(['/trainer']);
+    expect(activeInSidebar('trainer', '/trainer/planning/abc-123')).toEqual(['/trainer']);
+    expect(activeInSidebar('trainer', '/trainer/clients')).toEqual(['/trainer/clients']);
   });
 
   it('the profile item is active on /profile', () => {
