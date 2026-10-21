@@ -347,11 +347,12 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `client/workout-dashboard/components/suggestion-chip.component.ts` | *(sub-component)* | brain-icon suggested-weight hint; self-contained, remove it with its single usage in the exercise card |
 | `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
 | `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
-| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer — also embedded (`embedded` input, `titleKey` / `newRoute` inputs) as the exercises panel of `/my-plan` |
+| `trainer/library/trainer-library-page.component.ts` | `/trainer` (`/trainer/exercises` and `/trainer/planning` redirect here) | trainer — plans and exercises on one page, switched between one at a time (snap panels with `allowSplit` off, Training Plans by default). The forms (`/trainer/exercises/new`, `/trainer/planning/new`, `/trainer/planning/:id`) stay separate routes and their "back" lands on this page |
+| `trainer/exercises/exercise-list/exercise-list.component.ts` | *(panel of `/trainer` and of `/my-plan`)* | trainer · free · admin — `embedded` input makes its header sticky inside a panel; `titleKey` / `newRoute` inputs (defaults are the trainer's; `/my-plan` passes its own) |
 | `trainer/exercises/exercise-form/exercise-form.component.ts` | `/trainer/exercises/new` | trainer |
 | `trainer/exercises/exercise-edit-sheet/exercise-edit-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `trainer/exercises/muscle-tag-matrix/muscle-tag-matrix.component.ts` | *(sub-component)* | trainer |
-| `trainer/planning/planning-list/planning-list.component.ts` | `/trainer/planning` | trainer |
+| `trainer/planning/planning-list/planning-list.component.ts` | *(panel of `/trainer`)* | trainer — plan list with gym sharing and ID copy; `embedded` input as above |
 | `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` · `/my-plan/planning/new` · `/my-plan/planning/:id` | trainer · free · admin — supports read-only view mode for non-owned plans (`isReadOnly` signal gated by `tenant_id !== auth.uid()`) |
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |

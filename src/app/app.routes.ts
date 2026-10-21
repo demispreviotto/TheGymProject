@@ -37,27 +37,23 @@ export const routes: Routes = [
           ),
         canActivate: [roleGuard(['trainer'])],
         children: [
-          { path: '', redirectTo: 'exercises', pathMatch: 'full' },
           {
-            path: 'exercises',
+            path: '',
+            pathMatch: 'full',
             loadComponent: () =>
-              import(
-                '../features/trainer/exercises/exercise-list/exercise-list.component'
-              ).then(m => m.ExerciseListComponent),
+              import('../features/trainer/library/trainer-library-page.component').then(
+                m => m.TrainerLibraryPageComponent,
+              ),
           },
+          // Plans and exercises now share one page; keep the old URLs (and the forms' "back") working.
+          { path: 'exercises', pathMatch: 'full', redirectTo: '' },
+          { path: 'planning', pathMatch: 'full', redirectTo: '' },
           {
             path: 'exercises/new',
             loadComponent: () =>
               import(
                 '../features/trainer/exercises/exercise-form/exercise-form.component'
               ).then(m => m.ExerciseFormComponent),
-          },
-          {
-            path: 'planning',
-            loadComponent: () =>
-              import(
-                '../features/trainer/planning/planning-list/planning-list.component'
-              ).then(m => m.PlanningListComponent),
           },
           {
             path: 'planning/new',

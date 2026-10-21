@@ -25,8 +25,13 @@ const WORKOUT: NavItem = { route: '/dashboard', icon: 'barbell', labelKey: 'nav.
  */
 export const PROFILE_NAV_ITEM: NavItem = { route: '/profile', icon: 'user', labelKey: 'nav.profile', tabKey: 'tab.profile' };
 
-const TRAINER_EXERCISES: NavItem = { route: '/trainer/exercises', icon: 'list-numbers', labelKey: 'nav.exercises', tabKey: 'tab.exercises' };
-const TRAINER_PLANS: NavItem = { route: '/trainer/planning', icon: 'calendar', labelKey: 'nav.plans', tabKey: 'tab.plans' };
+const TRAINER_LIBRARY: NavItem = {
+  route: '/trainer',
+  icon: 'strategy',
+  labelKey: 'nav.myplan.library',
+  tabKey: 'tab.plans',
+  activeFor: ['/trainer/exercises', '/trainer/planning'],
+};
 const TRAINER_CLIENTS: NavItem = { route: '/trainer/clients', icon: 'users', labelKey: 'nav.clients', tabKey: 'tab.clients' };
 
 const ADMIN_PANEL: NavItem = { route: '/admin', icon: 'address-book-tabs', labelKey: 'nav.admin.panel', tabKey: 'tab.admin' };
@@ -49,7 +54,7 @@ export const MIN_TABS_FOR_BAR = 2;
 const NAV_BY_ROLE: Record<UserRole, readonly NavItem[]> = {
   user: [WORKOUT],
   free: [WORKOUT, MY_LIBRARY, MY_FRIENDS],
-  trainer: [WORKOUT, TRAINER_EXERCISES, TRAINER_PLANS, TRAINER_CLIENTS],
+  trainer: [WORKOUT, TRAINER_LIBRARY, TRAINER_CLIENTS],
   admin: [WORKOUT, ADMIN_PANEL, MY_LIBRARY, MY_FRIENDS],
 };
 
