@@ -320,8 +320,10 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |
 | `tenant/tenant.service.ts` | `tenant` computed from `AuthService`; `update(patch)` — DB write + live theme propagation |
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
+| `workout/workout-row.types.ts` | `WorkoutRowState` (one exercise of the active day as tracked on the dashboard), `RoundInput`, `InputChange` |
+| `workout/workout-stats.ts` | Pure dashboard helpers: `completedCount`, `progressPercent`, `rowVolume`, `sessionVolume`, `dayPosition` (index in the sorted day list, not the day number), `firstIncompleteId`, `topWeight`, `suggestionSource` |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
-| `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
+| `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `extend(seconds)` (the +30s button), `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
 | `push/push-notification.service.ts` | `isSupported`, `isSubscribed` signals; `enable()` requests a `SwPush` subscription (VAPID key in `push/push.config.ts`) and upserts it into `push_subscriptions` |
 | `pwa/pwa-update.service.ts` | `updateReady` signal (service-worker `VERSION_READY`); `applyUpdate()` activates the new version and reloads |
 | `network/network-status.service.ts` | `online` signal from `window` online/offline events |
@@ -330,9 +332,16 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Route | Role |
 |------|-------|------|
 | `auth/login/login.component.ts` | `/login` | public |
-| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated |
+| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated — desktop sidebar + mobile top bar, bottom tab bar and "More" drawer, all driven by `navItemsForRole()`; `hasNotifications` (pending friend/invite requests) feeds the avatar dot |
+| `shell/app-shell/nav-items.ts` | *(pure)* | `navItemsForRole(role)`: the role's pages in sidebar order; `inTabBar` marks the ≤4 that become bottom tabs, the rest live behind "More" |
+| `shell/bottom-tab-bar/bottom-tab-bar.component.ts` | *(shell, below `lg` only)* | all authenticated — role tabs + "More" (emits `more`, which opens the drawer: language, sign out, remaining pages) |
+| `shell/user-avatar/user-avatar.component.ts` | *(shell, mobile top bar)* | all authenticated — initials on the tenant colour, links to `/profile`, optional alert dot |
 | `profile/profile-page/profile-page.component.ts` | `/profile` | all |
-| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin |
+| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin — owns all state; exactly one exercise card is open (`openId` = hand-picked `manualOpenId` ?? first unfinished exercise) |
+| `client/workout-dashboard/components/workout-summary.component.ts` | *(sub-component)* | progress card: plan, "Day N of M", completion bar, session volume |
+| `client/workout-dashboard/components/exercise-card.component.ts` | *(sub-component)* | open (inputs) or collapsed (done / pending) row; emits `expand`, `inputChange`, `completeToggle`, `timerStart` |
+| `client/workout-dashboard/components/set-inputs.component.ts` | *(sub-component)* | weight/reps steppers: one pair in standard mode, one per round in granular/failure |
+| `client/workout-dashboard/components/suggestion-chip.component.ts` | *(sub-component)* | brain-icon suggested-weight hint; self-contained, remove it with its single usage in the exercise card |
 | `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
 | `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
 | `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer |
@@ -365,7 +374,11 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `HlmSheetComponent` | `shared/ui/sheet/` | component — slide panel (right or bottom side) |
 | `TranslatePipe` | `shared/pipes/translate.pipe.ts` | impure pipe — `\| translate` resolves key via `LanguageService` |
 | `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name (reads from `auth.tenant()`) |
-| `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast; mounted once in AppShell; driven by `CountdownTimerService` signals |
+| `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast, both with a `+30s` button; mounted once in AppShell; driven by `CountdownTimerService` signals |
+| `AppIconComponent` | `shared/ui/icons/` | component — `<app-icon name="…" iconClass="…" />`. Icons are Phosphor Regular, one `svg/<name>.ts` module each, registered in `icons.registry.ts` (the header there explains how to add one). **Gotcha:** `styles.css` has a global `svg { fill }` rule that beats the `fill="currentColor"` attribute, so add `fill-current` to `iconClass` when the icon should follow the text colour |
+| `StepperComponent` | `shared/components/stepper/` | component — value on top, two 48px −/+ buttons below (never clips on narrow screens); the value is a real number input. Inputs: `value`, `label`, `step`, `min`, `placeholder`, `disabled`. Output: `valueChange` (`number \| null`) |
+| `ExigenceBadgeComponent` | `shared/components/exigence-badge/` | component — A–D pill. Input: `level` |
+| `MuscleChipsComponent` | `shared/components/muscle-chips/` | component — muscle tags, primary first (tenant tint), wraps on narrow screens. Input: `muscles` |
 | `EmptyStateComponent` | `shared/components/empty-state/` | component — centered empty placeholder. Inputs: `message` (string, required), `hint` (string, optional). Use whenever a list or section has no items. |
 | `SkeletonComponent` | `shared/components/skeleton/` | component — animated loading pulse rows. Inputs: `count` (number, default `3`), `itemClass` (string, default `'h-14'`). Use instead of inline `@for` animate-pulse blocks. |
 | `ToggleComponent` | `shared/components/toggle/` | component — accessible boolean switch styled with tenant primary color. Inputs: `active` (boolean, required). Output: `changed` (boolean). Replaces inline `role="switch"` buttons with class-mapping methods. |
@@ -380,6 +393,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `shareOrCopy(url, title, text)` | `shared/utils/share.ts` | Uses `navigator.share` if available, falls back to `navigator.clipboard.writeText`. Use for all invite/share flows. |
 | `copyWithTimeout(value, setter, ms?)` | `shared/utils/share.ts` | Copies `value` to clipboard, calls `setter(value)` immediately and `setter(null)` after `ms` (default 2000). Use for copy-ID buttons that show a transient "Copied" label. |
 | `isValidEmail(email)` | `shared/utils/validators.ts` | Returns `true` if the string matches a basic email pattern. Use before calling invite edge functions. |
+| `nextStepValue(current, fallback, step, min, direction)` | `shared/utils/number-step.ts` | Next value of a ± stepper: starts from the value, else the placeholder, else 0; clamps to `min`; rounds to 2 decimals. |
+| `initials(name)` | `shared/utils/initials.ts` | Up to two uppercase initials (first and last word); `"?"` when there is no name. |
 
 ---
 
