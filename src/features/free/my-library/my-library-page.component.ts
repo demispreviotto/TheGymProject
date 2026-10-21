@@ -4,7 +4,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { ExerciseListComponent } from '../../trainer/exercises/exercise-list/exercise-list.component';
 import { MyPlanningListComponent } from '../my-planning-list/my-planning-list.component';
 
-/** Free and admin users' training library: their plans and their exercises on one page, each in its own snap panel. */
+/** Free and admin users' training library: their plans and their exercises on one page, switched between (one at a time, no split view). */
 @Component({
   selector: 'app-my-library-page',
   standalone: true,
@@ -14,6 +14,7 @@ import { MyPlanningListComponent } from '../my-planning-list/my-planning-list.co
     <app-snap-panels
       [firstLabel]="'myplan.planning.title' | translate"
       [secondLabel]="'myplan.exercises.title' | translate"
+      [allowSplit]="false"
     >
       <app-my-planning-list first embedded />
       <app-exercise-list

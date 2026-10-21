@@ -1,8 +1,8 @@
-import { Component, computed, inject, input, model, ChangeDetectionStrategy } from '@angular/core';
+import { Component, booleanAttribute, computed, inject, input, model, ChangeDetectionStrategy } from '@angular/core';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import {
-  DEFAULT_PANEL_LAYOUT, isPanelHidden, panelGridClass, type PanelLayout, type PanelSlot,
+  DEFAULT_PANEL_LAYOUT, effectiveLayout, isPanelHidden, panelGridClass, type PanelLayout, type PanelSlot,
 } from './snap-panels.layout';
 
 const SEGMENT_BASE = 'flex h-10 min-w-0 items-center justify-center rounded-lg px-2 text-xs font-semibold transition-colors';
@@ -11,7 +11,8 @@ const PANEL_BASE = 'min-h-0 overflow-hidden rounded-xl bg-neutral-950 ring-1 rin
 /**
  * Two stacked panels that fill the page height, each scrolling inside itself. A three-way switch
  * snaps between both panels at half height (the default), the first one full, or the second one
- * full. Project the content with `first` and `second` attributes:
+ * full. Set `[allowSplit]="false"` for a plain two-way switch that always shows a single panel.
+ * Project the content with `first` and `second` attributes:
  *
  *   <app-snap-panels firstLabel="…" secondLabel="…">
  *     <app-a first /> <app-b second />
@@ -32,7 +33,8 @@ const PANEL_BASE = 'min-h-0 overflow-hidden rounded-xl bg-neutral-950 ring-1 rin
   template: `
     <div class="flex h-full min-h-0 flex-col gap-3">
       <div
-        class="grid flex-shrink-0 grid-cols-3 gap-1 rounded-xl bg-neutral-900 p-1"
+        class="grid flex-shrink-0 gap-1 rounded-xl bg-neutral-900 p-1"
+        [class]="columnsClass()"
         role="group"
         [attr.aria-label]="'panels.view' | translate"
       >
@@ -40,7 +42,7 @@ const PANEL_BASE = 'min-h-0 overflow-hidden rounded-xl bg-neutral-950 ring-1 rin
           <button
             type="button"
             (click)="layout.set(option.layout)"
-            [attr.aria-pressed]="layout() === option.layout"
+            [attr.aria-pressed]="current() === option.layout"
             [class]="segmentClass(option.layout)"
           >
             <span class="truncate">{{ option.label }}</span>
@@ -81,23 +83,32 @@ export class SnapPanelsComponent {
   readonly firstLabel = input.required<string>();
   readonly secondLabel = input.required<string>();
 
-  /** Current layout; two-way bindable, `split` until the user picks another. */
+  /** Whether the half-and-half view is offered. Without it the switch has two options and one panel shows at a time. */
+  readonly allowSplit = input(true, { transform: booleanAttribute });
+
+  /** Chosen layout; two-way bindable, `split` until the user picks another. See `current` for what is shown. */
   readonly layout = model<PanelLayout>(DEFAULT_PANEL_LAYOUT);
 
-  readonly options = computed<readonly { layout: PanelLayout; label: string }[]>(() => [
-    { layout: 'first', label: this.firstLabel() },
-    { layout: 'split', label: this.lang.t('panels.both') },
-    { layout: 'second', label: this.secondLabel() },
-  ]);
+  /** The layout on screen: the chosen one, except that `split` becomes the first panel when it is not allowed. */
+  readonly current = computed(() => effectiveLayout(this.layout(), this.allowSplit()));
 
-  readonly gridClass = computed(() => panelGridClass(this.layout()));
+  readonly options = computed<readonly { layout: PanelLayout; label: string }[]>(() => {
+    const first = { layout: 'first' as const, label: this.firstLabel() };
+    const second = { layout: 'second' as const, label: this.secondLabel() };
+    return this.allowSplit()
+      ? [first, { layout: 'split' as const, label: this.lang.t('panels.both') }, second]
+      : [first, second];
+  });
+
+  readonly columnsClass = computed(() => (this.allowSplit() ? 'grid-cols-3' : 'grid-cols-2'));
+  readonly gridClass = computed(() => panelGridClass(this.current()));
 
   isHidden(slot: PanelSlot): boolean {
-    return isPanelHidden(this.layout(), slot);
+    return isPanelHidden(this.current(), slot);
   }
 
   segmentClass(layout: PanelLayout): string {
-    return `${SEGMENT_BASE} ${this.layout() === layout
+    return `${SEGMENT_BASE} ${this.current() === layout
       ? 'bg-tenant-primary text-tenant-contrast'
       : 'text-neutral-400 hover:text-neutral-100'}`;
   }

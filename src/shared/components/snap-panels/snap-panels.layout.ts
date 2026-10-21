@@ -16,6 +16,14 @@ export function panelGridClass(layout: PanelLayout): string {
   return GRID_CLASS[layout];
 }
 
+/**
+ * The layout actually shown. When a page does not offer the half-and-half view, `split` falls back to
+ * the first panel, so there is always exactly one panel on screen.
+ */
+export function effectiveLayout(layout: PanelLayout, allowSplit: boolean): PanelLayout {
+  return !allowSplit && layout === 'split' ? 'first' : layout;
+}
+
 /** A panel is hidden when the other one has taken the full height. */
 export function isPanelHidden(layout: PanelLayout, slot: PanelSlot): boolean {
   return layout !== 'split' && layout !== slot;
