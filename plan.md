@@ -260,6 +260,8 @@ In Supabase Studio → `profiles` table → find your row → set `role = 'admin
 - **Trainer and admin access Today's Workout** — `/dashboard` now accessible to all roles; trainer/admin see the dashboard link in their nav; no-plan CTA routes to the correct planning section per role (`/trainer/planning` for trainer, `/my-plan/planning` for free/admin)
 - **i18n**: 20 new translation keys (EN/ES)
 
+> **Later change (Phase 8.2):** the separate `/my-plan/exercises` and `/my-plan/planning` pages were merged into one `/my-plan` page, the "My Plans" / "My Exercises" sidebar items became a single "Plans & Exercises" item, and the dashboard's no-plan CTA now points to `/my-plan` (free/admin) or `/trainer` (trainer). The plan and exercise forms keep their routes.
+
 ---
 
 ## Phase 8.1: Rest Timer Component
@@ -272,8 +274,35 @@ In Supabase Studio → `profiles` table → find your row → set `role = 'admin
   - **Toast** (bottom-center): tap → re-expands to fullscreen.
   - Last 5 seconds: number blinks via CSS `@keyframes`. On completion: disappears automatically.
   - `×` cancel button available in both states.
-- **Timer button** on each exercise card (top-right of header row) — disabled on all cards while any timer is running (singleton enforces one-at-a-time). `WorkoutDashboardComponent.ngOnDestroy()` calls `timerService.cancel()` to silently kill the timer on navigation.
+- **Timer button** on each exercise card (top-right of header row) — disabled on all cards while any timer is running (singleton enforces one-at-a-time). The timer is **not** cancelled when the user leaves the workout page: it keeps running and its toast stays visible on every page. `AppShellComponent.ngOnDestroy()` cancels it, i.e. when the session ends (sign-out), so it can never run without UI.
+- **`extend(seconds)`** (+30s button on both the overlay and the toast) adds time to the running timer; it is a no-op when no timer is active and leaves the fullscreen/minimised state untouched.
 - **`timer` icon** added to SVG icon registry (`shared/ui/icons/svg/timer.ts`).
+
+---
+
+## Phase 8.2: Mobile-First Redesign & Page Consolidation
+**Status: ✅ COMPLETE** — no database, edge-function or CI changes.
+
+Adapts the Google Stitch design to the existing app. Business logic and the schema are unchanged except where noted below.
+
+### Delivered
+- **Workout dashboard**: progress card (plan, "Day N of M", completion bar, session volume and duration); accordion exercise cards where exactly one card is open (the first unfinished one, or any card on tap), with `+/-` steppers, exigence badge, muscle chips and a removable brain "suggested weight" chip. Split into small components under `features/client/workout-dashboard/components/` plus shared `StepperComponent`, `ExigenceBadgeComponent`, `MuscleChipsComponent`.
+- **Per-round completion** (`WorkoutRowState.roundsDone[]`): the primary button completes the current round and starts the exercise's rest timer between rounds; after the last round the open card moves on. `is_completed` is saved per round (existing `workout_logs` column). Inputs are **pre-filled** with the suggested weight and target reps, so what is shown is what is saved.
+- **Workout draft** (`WorkoutDraftService`, localStorage, per user + plan + day, 12 h expiry): the workout in progress survives switching pages, reloading and closing the app; cleared once the session is saved. `SessionClock` carries the duration across.
+- **Shell**: below `lg`, a top bar (tenant + avatar that opens Profile, with a notification dot for pending friend/invite requests) and a floating card-style bottom tab bar; no side drawer. A client, whose only page is the workout, gets no bar. Language and sign-out moved to two new sections on the Profile page; the desktop sidebar is unchanged and lists Profile.
+- **Merged pages** with the new `SnapPanelsComponent` (two stacked, scrollable panels; a switch snaps between both at half height, or either one full). Every page that uses it currently turns the half-and-half view off (`allowSplit=false`) and switches between its two panels one at a time: Admin = Requests + Users on `/admin`, Free/Admin = Plans + Exercises on `/my-plan`, Trainer = Plans + Exercises on `/trainer`. The split view remains available in the component.
+- **Navigation model**: one role-based list (`navItemsForRole`, at most 5 pages, no overflow menu) shared by the sidebar and the tab bar; active state comes from one pure function (`isNavItemActive`).
+- **Branding & icons**: app icon, favicon and splash screens switched to Phosphor `lockers` (same colours); new Phosphor icons (`brain`, `minus`, `checks`, `dots-three`, `barbell`, `lockers`) with the source and how to add more documented in the icon registry.
+- **Fixes**: reloading an inner page no longer throws the deep link away (`AuthService.redirectByRole` reads the pending navigation); the plans list showed the raw key `planning.subtitle`.
+
+### Route changes
+| Old | New |
+|-----|-----|
+| `/admin/requests`, `/admin/users` | `/admin` |
+| `/my-plan/planning`, `/my-plan/exercises` | `/my-plan` |
+| `/trainer/exercises`, `/trainer/planning` | `/trainer` |
+
+The old URLs redirect, and the forms (`/my-plan/planning/new`, `/my-plan/planning/:id`, `/my-plan/exercises/new`, and the `/trainer/…` equivalents) keep their routes; their "back" lands on the merged page.
 
 ---
 

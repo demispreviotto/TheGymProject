@@ -4,17 +4,27 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { TenantService } from '../../../core/tenant/tenant.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
+import { validateInviteRequest, type InviteRequestIssue } from '../../../core/invite-requests/invite-request.validation';
+import { LanguageService } from '../../../core/i18n/language.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import { PushToggleComponent } from '../push-toggle/push-toggle.component';
-import type { UserRole } from '../../../core/auth/auth.types';
+import type { Language, UserRole } from '../../../core/auth/auth.types';
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+
+/** Message shown for each reason the invite form cannot be sent yet (as the hint, and as the click-handler fallback). */
+const INVITE_ISSUE_KEY: Record<InviteRequestIssue, string> = {
+  'missing-fields': 'invite.friends.hint.fields',
+  'invalid-email': 'invite.friends.hint.email',
+  'responsibility-not-accepted': 'invite.friends.hint.responsibility',
+};
 
 @Component({
   selector: 'app-profile-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, PushToggleComponent],
+  imports: [FormsModule, TranslatePipe, AppIconComponent, PushToggleComponent],
   template: `
     <div class="max-w-lg space-y-6">
       <h1 class="text-xl font-bold text-neutral-100">{{ 'profile.title' | translate }}</h1>
@@ -120,11 +130,14 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
                 @if (inviteError()) {
                   <p class="text-xs text-red-400">{{ inviteError() }}</p>
                 }
-                <button (click)="submitInviteRequest()" [disabled]="inviteSubmitting()"
+                <button (click)="submitInviteRequest()" [disabled]="!canSubmitInvite()"
                   class="w-full py-2 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium
-                         hover:opacity-90 transition-opacity disabled:opacity-40">
+                         hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40">
                   {{ inviteSubmitting() ? ('invite.sending' | translate) : ('invite.friends.submit' | translate) }}
                 </button>
+                @if (inviteHintKey(); as hintKey) {
+                  <p class="text-center text-xs text-neutral-500">{{ hintKey | translate }}</p>
+                }
               }
             </div>
           } @else {
@@ -246,11 +259,49 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
           }
         </div>
       }
+
+      <!-- Language -->
+      <section class="rounded-xl border border-neutral-800 bg-neutral-900">
+        <div class="px-5 py-4 border-b border-neutral-800">
+          <h2 class="text-sm font-semibold text-neutral-100">{{ 'profile.language' | translate }}</h2>
+        </div>
+        <div class="grid grid-cols-2 gap-2 p-4" role="group" [attr.aria-label]="'profile.language' | translate">
+          @for (option of languages; track option.code) {
+            <button
+              type="button"
+              (click)="setLanguage(option.code)"
+              [attr.aria-pressed]="isLanguage(option.code)"
+              [class]="languageClass(option.code)"
+            >
+              {{ option.label }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Session -->
+      <section class="rounded-xl border border-neutral-800 bg-neutral-900">
+        <div class="px-5 py-4 border-b border-neutral-800">
+          <h2 class="text-sm font-semibold text-neutral-100">{{ 'profile.session' | translate }}</h2>
+        </div>
+        <div class="space-y-3 p-4">
+          <p class="text-xs text-neutral-500">{{ 'profile.signout.hint' | translate }}</p>
+          <button
+            type="button"
+            (click)="signOut()"
+            class="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+          >
+            <app-icon name="arrow-right-from-bracket" iconClass="w-5 h-5 fill-current" />
+            {{ 'nav.signout' | translate }}
+          </button>
+        </div>
+      </section>
     </div>
   `,
 })
 export class ProfilePageComponent implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly language = inject(LanguageService);
   private readonly tenantService = inject(TenantService);
   private readonly theme = inject(ThemeService);
   readonly inviteService = inject(InviteRequestService);
@@ -272,18 +323,55 @@ export class ProfilePageComponent implements OnInit {
   readonly inviteError = signal<string | null>(null);
   readonly inviteSuccess = signal(false);
 
+  /** What still stops the invite form from being sent (null = ready); the button and the hint follow it. */
+  readonly inviteIssue = computed(() => validateInviteRequest({
+    name: this.inviteeName(),
+    email: this.inviteeEmail(),
+    reason: this.inviteeReason(),
+    accepted: this.inviteAccepted(),
+  }));
+  readonly canSubmitInvite = computed(() => this.inviteIssue() === null && !this.inviteSubmitting());
+  readonly inviteHintKey = computed(() => {
+    const issue = this.inviteIssue();
+    return issue === null ? null : INVITE_ISSUE_KEY[issue];
+  });
+
+  readonly languages: readonly { code: Language; label: string }[] = [
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español' },
+  ];
+
   async ngOnInit(): Promise<void> {
     if (this.isFree()) await this.inviteService.loadMyRequests();
   }
 
+  isLanguage(code: Language): boolean {
+    return this.language.activeLanguage() === code;
+  }
+
+  languageClass(code: Language): string {
+    const base = 'flex h-12 items-center justify-center rounded-xl text-sm font-semibold transition-colors';
+    return this.isLanguage(code)
+      ? `${base} bg-tenant-primary text-tenant-contrast`
+      : `${base} bg-neutral-800 text-neutral-300 hover:bg-neutral-700`;
+  }
+
+  setLanguage(code: Language): void {
+    void this.language.setLanguage(code);
+  }
+
+  signOut(): void {
+    void this.auth.signOut();
+  }
+
   async submitInviteRequest(): Promise<void> {
     this.inviteError.set(null);
+    // The button is disabled while the form is invalid; this re-check covers anything that still gets here.
+    const issue = this.inviteIssue();
+    if (issue !== null) { this.inviteError.set(this.language.t(INVITE_ISSUE_KEY[issue])); return; }
     const email = this.inviteeEmail().trim();
     const name = this.inviteeName().trim();
     const reason = this.inviteeReason().trim();
-    if (!name || !email || !reason) { this.inviteError.set('Please fill in all fields.'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.inviteError.set('Enter a valid email.'); return; }
-    if (!this.inviteAccepted()) { this.inviteError.set('You must accept responsibility.'); return; }
     this.inviteSubmitting.set(true);
     const err = await this.inviteService.submitRequest(email, name, reason);
     this.inviteSubmitting.set(false);

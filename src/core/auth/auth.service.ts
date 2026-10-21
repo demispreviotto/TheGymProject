@@ -105,8 +105,19 @@ export class AuthService {
     if (user) await this.loadProfile(user.id);
   }
 
+  /**
+   * Path the user is on, or is about to land on. While the initial navigation is held
+   * back by the auth guards, `router.url` is still '/', so a restored session on a deep
+   * link would look like a fresh visit to the root — the pending target tells them apart.
+   */
+  private currentPath(): string {
+    const pending = this.router.currentNavigation();
+    const url = pending ? this.router.serializeUrl(pending.extractedUrl) : this.router.url;
+    return url.split(/[?#]/)[0];
+  }
+
   private redirectByRole(role: Profile['role']): void {
-    const current = this.router.url;
+    const current = this.currentPath();
     if (current === '/login' || current === '/') {
       if (role === 'admin') this.router.navigate(['/admin']);
       else if (role === 'trainer') this.router.navigate(['/trainer']);

@@ -4,12 +4,21 @@ export type TranslationKey = keyof typeof dictionary;
 
 export const dictionary = {
   // Navigation
-  'nav.exercises':        { en: 'Exercises',        es: 'Ejercicios' },
-  'nav.plans':            { en: 'Training Plans',   es: 'Planes de Entrenamiento' },
   'nav.clients':          { en: 'Clients',           es: 'Clientes' },
   'nav.workout':          { en: "Today's Workout",  es: 'Entrenamiento de Hoy' },
   'nav.profile':          { en: 'Profile',           es: 'Perfil' },
   'nav.signout':          { en: 'Sign out',          es: 'Cerrar Sesión' },
+  'nav.main':             { en: 'Main navigation',   es: 'Navegación principal' },
+  'nav.profile.open':     { en: 'Open profile',      es: 'Abrir perfil' },
+  'nav.pending':          { en: 'Pending requests',  es: 'Solicitudes pendientes' },
+
+  // Mobile bottom tab bar (short labels)
+  'tab.workout':          { en: 'Workout',           es: 'Entrenar' },
+  'tab.plans':            { en: 'Plans',             es: 'Planes' },
+  'tab.clients':          { en: 'Clients',           es: 'Clientes' },
+  'tab.friends':          { en: 'Friends',           es: 'Amigos' },
+  'tab.admin':            { en: 'Admin',             es: 'Admin' },
+  'tab.profile':          { en: 'Profile',           es: 'Perfil' },
 
   // Common actions
   'common.loading':       { en: 'Loading…',          es: 'Cargando…' },
@@ -37,6 +46,7 @@ export const dictionary = {
   // Planning
   'planning.title':          { en: 'Training Plans',                                       es: 'Planes de Entrenamiento' },
   'planning.new':            { en: '+ New Plan',                                           es: '+ Nuevo Plan' },
+  'planning.subtitle':       { en: 'plans',                                                es: 'planes' },
   'planning.empty':          { en: 'No training plans yet.',                               es: 'Aún no hay planes de entrenamiento.' },
   'planning.empty.hint':     { en: 'Create your first plan to assign to clients.',        es: 'Crea tu primer plan para asignar a clientes.' },
   'planning.autorm':         { en: 'Auto 1RM enabled',                                    es: '1RM automático activado' },
@@ -87,6 +97,33 @@ export const dictionary = {
   'dashboard.connect.err.notfound': { en: 'Plan not found or sharing is disabled.', es: 'Plan no encontrado o sin compartición activa.' },
   'dashboard.session.finish': { en: 'Finish Workout', es: 'Finalizar Entrenamiento' },
 
+  'dashboard.of':            { en: 'of',                     es: 'de' },
+  'dashboard.progress':      { en: 'Progress',               es: 'Progreso' },
+  'dashboard.progress.done': { en: 'completed',              es: 'completados' },
+  'dashboard.volume':        { en: 'Volume',                 es: 'Volumen' },
+  'dashboard.duration':      { en: 'Duration',               es: 'Duración' },
+  'dashboard.completeround': { en: 'Complete round',         es: 'Completar serie' },
+  'dashboard.rounds':        { en: 'rounds',                 es: 'series' },
+  'dashboard.undoround':     { en: 'Undo last round',        es: 'Deshacer la última serie' },
+  'dashboard.alldone':       { en: 'All rounds done',        es: 'Todas las series completadas' },
+  'dashboard.current':       { en: 'Current',                es: 'Actual' },
+  'dashboard.target':        { en: 'Target',                 es: 'Objetivo' },
+  'dashboard.allrounds':     { en: 'same for every round',   es: 'igual en todas las series' },
+  'dashboard.suggested.auto': { en: 'Based on your last session', es: 'Según tu última sesión' },
+  'dashboard.suggested.plan': { en: 'From your plan',        es: 'De tu plan' },
+  'dashboard.timer.start':   { en: 'Start rest timer',       es: 'Iniciar descanso' },
+
+  // Snap panels (two stacked, scrollable panels)
+  'panels.both':             { en: 'Both',                   es: 'Ambos' },
+  'panels.view':             { en: 'Panel layout',           es: 'Distribución de paneles' },
+
+  // Rest timer
+  'timer.rest':              { en: 'Rest',                   es: 'Descanso' },
+  'timer.hint':              { en: 'Tap outside to minimise', es: 'Toca fuera para minimizar' },
+  'timer.expand':            { en: 'Tap to expand',          es: 'Toca para expandir' },
+  'timer.extend.aria':       { en: 'Add time',               es: 'Añadir tiempo' },
+  'timer.cancel.aria':       { en: 'Cancel timer',           es: 'Cancelar temporizador' },
+
   // Profile
   'profile.title':           { en: 'Profile',               es: 'Perfil' },
   'profile.name':            { en: 'Name',                  es: 'Nombre' },
@@ -95,10 +132,11 @@ export const dictionary = {
   'profile.since':           { en: 'Member since',          es: 'Miembro desde' },
   'profile.gym':             { en: 'Gym / Trainer',         es: 'Gimnasio / Entrenador' },
   'profile.language':        { en: 'Language',              es: 'Idioma' },
+  'profile.session':         { en: 'Session',               es: 'Sesión' },
+  'profile.signout.hint':    { en: 'You will need to sign in again to use the app.', es: 'Tendrás que iniciar sesión de nuevo para usar la app.' },
 
   // Admin portal
-  'nav.admin.requests':            { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
-  'nav.admin.users':               { en: 'Users',                                  es: 'Usuarios' },
+  'admin.requests.short':          { en: 'Requests',                               es: 'Solicitudes' },
   'admin.requests.title':          { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
   'admin.requests.empty':          { en: 'No requests yet.',                       es: 'Aún no hay solicitudes.' },
   'admin.requests.approve':        { en: 'Approve & Invite',                       es: 'Aprobar e Invitar' },
@@ -118,16 +156,20 @@ export const dictionary = {
   'invite.friends.reason':         { en: 'Why should they have access?',           es: '¿Por qué deberían tener acceso?' },
   'invite.friends.responsibility': { en: 'I accept responsibility for this user\'s usage', es: 'Acepto responsabilidad por el uso de este usuario' },
   'invite.friends.submit':         { en: 'Send Request',                           es: 'Enviar Solicitud' },
+  'invite.friends.hint.fields':    { en: 'Fill in all fields to send your request.', es: 'Completa todos los campos para enviar tu solicitud.' },
+  'invite.friends.hint.email':     { en: 'Enter a valid email address.',           es: 'Introduce un correo electrónico válido.' },
+  'invite.friends.hint.responsibility': { en: 'Accept responsibility to send your request.', es: 'Acepta la responsabilidad para enviar tu solicitud.' },
   'invite.friends.sent':           { en: 'Request submitted — pending admin approval', es: 'Solicitud enviada — pendiente de aprobación' },
   'invite.friends.status.pending':  { en: 'Pending',                              es: 'Pendiente' },
   'invite.friends.status.approved': { en: 'Approved',                             es: 'Aprobado' },
   'invite.friends.status.rejected': { en: 'Rejected',                             es: 'Rechazado' },
-  'invite.friends.limit':          { en: 'You have used all your invite slots.',   es: 'Has utilizado todos tus cupos de invitación.' },
+  'invite.friends.error.limit':    { en: 'You already have the maximum number of pending or approved invite requests. A rejected request frees its slot.', es: 'Ya tienes el máximo de solicitudes de invitación pendientes o aprobadas. Una solicitud rechazada libera su cupo.' },
+  'invite.friends.limit':          { en: 'You have used all your invite slots. A rejected request frees its slot.',   es: 'Has utilizado todos tus cupos de invitación. Una solicitud rechazada libera su cupo.' },
 
   // My Plan (free/admin self-service)
   'nav.myplan':                    { en: 'My Plan',                            es: 'Mi Plan' },
-  'nav.myplan.planning':           { en: 'My Plans',                           es: 'Mis Planes' },
-  'nav.myplan.exercises':          { en: 'My Exercises',                       es: 'Mis Ejercicios' },
+  'nav.myplan.library':            { en: 'Plans & Exercises',                  es: 'Planes y Ejercicios' },
+  'nav.admin.panel':               { en: 'Requests & Users',                   es: 'Solicitudes y Usuarios' },
   'nav.myplan.friends':            { en: 'Friends',                            es: 'Amigos' },
   'myplan.planning.title':         { en: 'My Plans',                           es: 'Mis Planes' },
   'myplan.planning.empty.hint':    { en: 'Create your first plan to get started.', es: 'Crea tu primer plan para comenzar.' },

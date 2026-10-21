@@ -2,10 +2,11 @@ import type { Mock } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../auth/auth.service';
+import { LanguageService } from '../i18n/language.service';
 import type { Profile } from '../auth/auth.types';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { createClientMock, createQueryMock, QueryMock } from '../../testing/supabase-mock';
-import { InviteRequest, InviteRequestService } from './invite-request.service';
+import { InviteRequest, InviteRequestService, MAX_INVITE_REQUESTS } from './invite-request.service';
 
 const req = (id: string, status: InviteRequest['status'], requester = 'u1'): InviteRequest =>
   ({ id, status, requester_id: requester } as InviteRequest);
@@ -23,6 +24,7 @@ describe('InviteRequestService', () => {
       providers: [
         { provide: SUPABASE_CLIENT, useValue: createClientMock(tables, { functions: { invoke } }) },
         { provide: AuthService, useValue: { profile } },
+        { provide: LanguageService, useValue: { t: (key: string) => `t:${key}` } },
       ],
     });
     service = TestBed.inject(InviteRequestService);
@@ -36,15 +38,45 @@ describe('InviteRequestService', () => {
   describe('computed counters', () => {
     beforeEach(() => setup({}));
 
-    it('counts only approved requests', () => {
-      service.myRequests.set([req('1', 'approved'), req('2', 'pending'), req('3', 'rejected')]);
-      expect(service.approvedCount()).toBe(1);
+    it('starts with every slot free', () => {
+      expect(service.usedInvites()).toBe(0);
+      expect(service.remainingInvites()).toBe(MAX_INVITE_REQUESTS);
+    });
+
+    it('a pending request uses a slot', () => {
+      service.myRequests.set([req('1', 'pending')]);
+      expect(service.usedInvites()).toBe(1);
       expect(service.remainingInvites()).toBe(1);
+    });
+
+    it('an approved request keeps its slot', () => {
+      service.myRequests.set([req('1', 'approved')]);
+      expect(service.usedInvites()).toBe(1);
+      expect(service.remainingInvites()).toBe(1);
+    });
+
+    it('a rejected request does not use a slot', () => {
+      service.myRequests.set([req('1', 'rejected'), req('2', 'rejected'), req('3', 'rejected')]);
+      expect(service.usedInvites()).toBe(0);
+      expect(service.remainingInvites()).toBe(MAX_INVITE_REQUESTS);
+    });
+
+    it('pending and approved requests share the same limit (the old counter ignored pending ones)', () => {
+      service.myRequests.set([req('1', 'approved'), req('2', 'pending'), req('3', 'rejected')]);
+      expect(service.usedInvites()).toBe(2);
+      expect(service.remainingInvites()).toBe(0);
     });
 
     it('never reports negative remaining invites', () => {
       service.myRequests.set([req('1', 'approved'), req('2', 'approved'), req('3', 'approved')]);
       expect(service.remainingInvites()).toBe(0);
+    });
+
+    it('frees a slot again when a pending request is rejected', () => {
+      service.myRequests.set([req('1', 'pending'), req('2', 'pending')]);
+      expect(service.remainingInvites()).toBe(0);
+      service.myRequests.set([req('1', 'rejected'), req('2', 'pending')]);
+      expect(service.remainingInvites()).toBe(1);
     });
 
     it('pendingCount counts pending requests across all users', () => {
@@ -91,8 +123,20 @@ describe('InviteRequestService', () => {
     it('blocks at two pending/approved requests', async () => {
       setup({ invite_requests: createQueryMock() });
       service.myRequests.set([req('1', 'pending'), req('2', 'approved')]);
-      expect(await service.submitRequest('a@x.io', 'Ann', 'friend')).toBe('You have reached the maximum of 2 invite requests.');
+      expect(await service.submitRequest('a@x.io', 'Ann', 'friend')).toBe('t:invite.friends.error.limit');
       expect(tables['invite_requests']['insert']).not.toHaveBeenCalled();
+    });
+
+    it('refuses exactly when the page would show no remaining invites, for every mix of statuses', async () => {
+      const statuses = ['pending', 'approved', 'rejected'] as const;
+      for (const a of statuses) for (const b of statuses) for (const c of statuses) {
+        TestBed.resetTestingModule();
+        setup({ invite_requests: createQueryMock({ error: null, data: [] }) });
+        service.myRequests.set([req('1', a), req('2', b), req('3', c)]);
+        const noneRemaining = service.remainingInvites() === 0; // read before submitting: a success reloads the list
+        const refused = (await service.submitRequest('a@x.io', 'Ann', 'friend')) !== null;
+        expect(refused, `${a}/${b}/${c}`).toBe(noneRemaining);
+      }
     });
 
     it('does not count rejected requests against the limit', async () => {
@@ -109,6 +153,13 @@ describe('InviteRequestService', () => {
         reason: 'my friend', accepted_responsibility: true,
       });
       expect(service.myRequests().map(r => r.id)).toEqual(['9']);
+    });
+
+    it('shows the translated limit message when the database rejects the insert', async () => {
+      setup({ invite_requests: createQueryMock({ error: { message: 'invite_request_limit_reached', code: 'IR001' } }) });
+      // The local list is stale (shows a free slot), as in a second tab or a direct API call.
+      expect(await service.submitRequest('a@x.io', 'Ann', 'x')).toBe('t:invite.friends.error.limit');
+      expect(tables['invite_requests']['select']).not.toHaveBeenCalled();
     });
 
     it('returns the insert error without reloading', async () => {

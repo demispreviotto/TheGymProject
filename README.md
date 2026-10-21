@@ -26,12 +26,14 @@ A multi-tenant gym management web application. Trainers manage client rosters, b
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Angular 19 (standalone components, signals) |
+| Frontend | Angular 20 (standalone components, signals) |
 | UI | Tailwind CSS + Spartan UI (Radix primitives) |
 | Build | Angular Application Builder (esbuild / Vite dev server) |
 | Backend | Supabase — PostgreSQL + Row-Level Security + Auth |
 | Edge Functions | Deno (Supabase Edge Runtime) |
 | Hosting | Vercel |
+| Testing | Vitest (jsdom) via Angular's `unit-test` builder — `pnpm test` / `pnpm test:ci` |
+| CI | GitHub Actions on PRs to `dev`/`main`: build, CSP check, unit tests, migrations on a fresh DB |
 | Package manager | pnpm 11 |
 
 ---

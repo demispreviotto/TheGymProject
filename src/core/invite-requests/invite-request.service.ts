@@ -1,6 +1,7 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { AuthService } from '../auth/auth.service';
+import { LanguageService } from '../i18n/language.service';
 
 export interface InviteRequest {
   id: string;
@@ -17,19 +18,32 @@ export interface InviteRequest {
   requester?: { name: string; email: string };
 }
 
+/**
+ * How many invite requests a user can have pending or approved at the same time.
+ * The database enforces the same rule (invite_request_limit() in migration
+ * 20261021120000_invite_request_limit.sql): keep the two numbers in sync.
+ */
+export const MAX_INVITE_REQUESTS = 2;
+
+/** SQLSTATE the database raises when an insert would exceed the limit. */
+const INVITE_LIMIT_SQLSTATE = 'IR001';
+
 @Injectable({ providedIn: 'root' })
 export class InviteRequestService {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly auth = inject(AuthService);
+  private readonly lang = inject(LanguageService);
 
   readonly myRequests = signal<InviteRequest[]>([]);
   readonly allRequests = signal<InviteRequest[]>([]);
 
-  readonly approvedCount = computed(
-    () => this.myRequests().filter(r => r.status === 'approved').length,
+  /** Slots in use: a pending request holds one until it is decided, an approved one keeps it. A rejected request frees it. */
+  readonly usedInvites = computed(
+    () => this.myRequests().filter(r => r.status === 'pending' || r.status === 'approved').length,
   );
 
-  readonly remainingInvites = computed(() => Math.max(0, 2 - this.approvedCount()));
+  /** What the Profile page shows, and exactly what submitRequest enforces: the two cannot disagree. */
+  readonly remainingInvites = computed(() => Math.max(0, MAX_INVITE_REQUESTS - this.usedInvites()));
 
   readonly pendingCount = computed(
     () => this.allRequests().filter(r => r.status === 'pending').length,
@@ -80,10 +94,7 @@ export class InviteRequestService {
     const requesterId = this.auth.profile()?.id;
     if (!requesterId) return 'Not authenticated';
 
-    const pendingOrApproved = this.myRequests().filter(
-      r => r.status === 'pending' || r.status === 'approved',
-    ).length;
-    if (pendingOrApproved >= 2) return 'You have reached the maximum of 2 invite requests.';
+    if (this.remainingInvites() === 0) return this.lang.t('invite.friends.error.limit');
 
     const { error } = await this.supabase.from('invite_requests').insert({
       requester_id: requesterId,
@@ -92,7 +103,7 @@ export class InviteRequestService {
       reason,
       accepted_responsibility: true,
     });
-    if (error) return error.message;
+    if (error) return error.code === INVITE_LIMIT_SQLSTATE ? this.lang.t('invite.friends.error.limit') : error.message;
     await this.loadMyRequests();
     return null;
   }
