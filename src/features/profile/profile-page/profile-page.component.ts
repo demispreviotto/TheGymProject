@@ -4,6 +4,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { TenantService } from '../../../core/tenant/tenant.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
+import { validateInviteRequest, type InviteRequestIssue } from '../../../core/invite-requests/invite-request.validation';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
@@ -11,6 +12,13 @@ import { PushToggleComponent } from '../push-toggle/push-toggle.component';
 import type { Language, UserRole } from '../../../core/auth/auth.types';
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+
+/** Message shown for each reason the invite form cannot be sent yet (as the hint, and as the click-handler fallback). */
+const INVITE_ISSUE_KEY: Record<InviteRequestIssue, string> = {
+  'missing-fields': 'invite.friends.hint.fields',
+  'invalid-email': 'invite.friends.hint.email',
+  'responsibility-not-accepted': 'invite.friends.hint.responsibility',
+};
 
 @Component({
   selector: 'app-profile-page',
@@ -122,11 +130,14 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
                 @if (inviteError()) {
                   <p class="text-xs text-red-400">{{ inviteError() }}</p>
                 }
-                <button (click)="submitInviteRequest()" [disabled]="inviteSubmitting()"
+                <button (click)="submitInviteRequest()" [disabled]="!canSubmitInvite()"
                   class="w-full py-2 rounded-lg bg-[hsl(var(--tenant-primary))] text-[hsl(var(--tenant-contrast))] text-sm font-medium
-                         hover:opacity-90 transition-opacity disabled:opacity-40">
+                         hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40">
                   {{ inviteSubmitting() ? ('invite.sending' | translate) : ('invite.friends.submit' | translate) }}
                 </button>
+                @if (inviteHintKey(); as hintKey) {
+                  <p class="text-center text-xs text-neutral-500">{{ hintKey | translate }}</p>
+                }
               }
             </div>
           } @else {
@@ -312,6 +323,19 @@ export class ProfilePageComponent implements OnInit {
   readonly inviteError = signal<string | null>(null);
   readonly inviteSuccess = signal(false);
 
+  /** What still stops the invite form from being sent (null = ready); the button and the hint follow it. */
+  readonly inviteIssue = computed(() => validateInviteRequest({
+    name: this.inviteeName(),
+    email: this.inviteeEmail(),
+    reason: this.inviteeReason(),
+    accepted: this.inviteAccepted(),
+  }));
+  readonly canSubmitInvite = computed(() => this.inviteIssue() === null && !this.inviteSubmitting());
+  readonly inviteHintKey = computed(() => {
+    const issue = this.inviteIssue();
+    return issue === null ? null : INVITE_ISSUE_KEY[issue];
+  });
+
   readonly languages: readonly { code: Language; label: string }[] = [
     { code: 'en', label: 'English' },
     { code: 'es', label: 'Español' },
@@ -342,12 +366,12 @@ export class ProfilePageComponent implements OnInit {
 
   async submitInviteRequest(): Promise<void> {
     this.inviteError.set(null);
+    // The button is disabled while the form is invalid; this re-check covers anything that still gets here.
+    const issue = this.inviteIssue();
+    if (issue !== null) { this.inviteError.set(this.language.t(INVITE_ISSUE_KEY[issue])); return; }
     const email = this.inviteeEmail().trim();
     const name = this.inviteeName().trim();
     const reason = this.inviteeReason().trim();
-    if (!name || !email || !reason) { this.inviteError.set('Please fill in all fields.'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.inviteError.set('Enter a valid email.'); return; }
-    if (!this.inviteAccepted()) { this.inviteError.set('You must accept responsibility.'); return; }
     this.inviteSubmitting.set(true);
     const err = await this.inviteService.submitRequest(email, name, reason);
     this.inviteSubmitting.set(false);
