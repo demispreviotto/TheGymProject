@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, input, ChangeDetectionStrategy } from '@angular/core';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
+import { formatDuration } from '../../../../shared/utils/format';
 import type { DayPosition } from '../../../../core/workout/workout-stats';
 
 /** Progress card at the top of the workout: plan, day, completion bar and session volume. */
@@ -56,17 +57,31 @@ import type { DayPosition } from '../../../../core/workout/workout-stats';
         </div>
       </div>
 
-      <div class="mt-4 flex items-center gap-3 rounded-lg bg-neutral-800/60 p-2.5">
-        <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-neutral-400">
-          <app-icon name="barbell" iconClass="w-[18px] h-[18px]" />
-        </span>
-        <div class="flex flex-col">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
-            {{ 'dashboard.volume' | translate }}
+      <div class="mt-4 grid grid-cols-2 gap-2">
+        <div class="flex min-w-0 items-center gap-3 rounded-lg bg-neutral-800/60 p-2.5">
+          <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-neutral-400">
+            <app-icon name="barbell" iconClass="w-[18px] h-[18px]" />
           </span>
-          <span class="text-sm font-semibold tabular-nums text-neutral-100">
-            {{ volume() | number: '1.0-1' }} kg
+          <div class="flex min-w-0 flex-col">
+            <span class="truncate text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+              {{ 'dashboard.volume' | translate }}
+            </span>
+            <span class="truncate text-sm font-semibold tabular-nums text-neutral-100">
+              {{ volume() | number: '1.0-1' }} kg
+            </span>
+          </div>
+        </div>
+
+        <div class="flex min-w-0 items-center gap-3 rounded-lg bg-neutral-800/60 p-2.5">
+          <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-neutral-400">
+            <app-icon name="timer" iconClass="w-[18px] h-[18px] fill-current" />
           </span>
+          <div class="flex min-w-0 flex-col">
+            <span class="truncate text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+              {{ 'dashboard.duration' | translate }}
+            </span>
+            <span class="truncate text-sm font-semibold tabular-nums text-neutral-100">{{ durationLabel() }}</span>
+          </div>
         </div>
       </div>
     </section>
@@ -79,6 +94,8 @@ export class WorkoutSummaryComponent {
   readonly total = input.required<number>();
   readonly percent = input.required<number>();
   readonly volume = input.required<number>();
+  readonly durationSeconds = input.required<number>();
 
   readonly isDone = computed(() => this.total() > 0 && this.completed() >= this.total());
+  readonly durationLabel = computed(() => formatDuration(this.durationSeconds()));
 }

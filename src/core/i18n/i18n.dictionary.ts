@@ -105,6 +105,7 @@ export const dictionary = {
   'dashboard.progress':      { en: 'Progress',               es: 'Progreso' },
   'dashboard.progress.done': { en: 'completed',              es: 'completados' },
   'dashboard.volume':        { en: 'Volume',                 es: 'Volumen' },
+  'dashboard.duration':      { en: 'Duration',               es: 'Duración' },
   'dashboard.target':        { en: 'Target',                 es: 'Objetivo' },
   'dashboard.allrounds':     { en: 'same for every round',   es: 'igual en todas las series' },
   'dashboard.suggested.auto': { en: 'Based on your last session', es: 'Según tu última sesión' },
