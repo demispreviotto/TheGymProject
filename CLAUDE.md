@@ -303,6 +303,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260921154818_performance_indexes.sql` | Indexes on `profiles.tenant_id`/`tenant_ref_id`, `plannings.tenant_id`, `workout_sessions(user_id, planning_id, completed_at)`, `friendships.requester_id`/`addressee_id`, `invite_requests.status` |
 | `20260921160530_restrict_role_self_update.sql` | Replaces `"profiles: update own"` so a user can update their own row but not their own `role` column (blocks self-escalation via RLS) |
 | `20261005120000_push_notifications.sql` | `push_subscriptions` table + RLS; `send_push()` (pg_net → `send-push` edge function, secrets in Vault); triggers `friendships_push` and `invite_requests_push` |
+| `20261021120000_invite_request_limit.sql` | `invite_request_limit()` (=2) + `invite_requests_limit` trigger: at most 2 `pending`/`approved` requests per requester (advisory-locked per requester; re-opening a rejected one also counts); raises SQLSTATE `IR001` |
 
 ### Core (`src/core/`)
 | File | Purpose |
