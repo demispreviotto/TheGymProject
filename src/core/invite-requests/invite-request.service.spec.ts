@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '../auth/auth.service';
+import { LanguageService } from '../i18n/language.service';
 import type { Profile } from '../auth/auth.types';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { createClientMock, createQueryMock, QueryMock } from '../../testing/supabase-mock';
@@ -23,6 +24,7 @@ describe('InviteRequestService', () => {
       providers: [
         { provide: SUPABASE_CLIENT, useValue: createClientMock(tables, { functions: { invoke } }) },
         { provide: AuthService, useValue: { profile } },
+        { provide: LanguageService, useValue: { t: (key: string) => `t:${key}` } },
       ],
     });
     service = TestBed.inject(InviteRequestService);
@@ -121,7 +123,7 @@ describe('InviteRequestService', () => {
     it('blocks at two pending/approved requests', async () => {
       setup({ invite_requests: createQueryMock() });
       service.myRequests.set([req('1', 'pending'), req('2', 'approved')]);
-      expect(await service.submitRequest('a@x.io', 'Ann', 'friend')).toBe('You have reached the maximum of 2 invite requests.');
+      expect(await service.submitRequest('a@x.io', 'Ann', 'friend')).toBe('t:invite.friends.error.limit');
       expect(tables['invite_requests']['insert']).not.toHaveBeenCalled();
     });
 
@@ -151,6 +153,13 @@ describe('InviteRequestService', () => {
         reason: 'my friend', accepted_responsibility: true,
       });
       expect(service.myRequests().map(r => r.id)).toEqual(['9']);
+    });
+
+    it('shows the translated limit message when the database rejects the insert', async () => {
+      setup({ invite_requests: createQueryMock({ error: { message: 'invite_request_limit_reached', code: 'IR001' } }) });
+      // The local list is stale (shows a free slot), as in a second tab or a direct API call.
+      expect(await service.submitRequest('a@x.io', 'Ann', 'x')).toBe('t:invite.friends.error.limit');
+      expect(tables['invite_requests']['select']).not.toHaveBeenCalled();
     });
 
     it('returns the insert error without reloading', async () => {

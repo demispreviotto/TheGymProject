@@ -163,6 +163,7 @@ export const dictionary = {
   'invite.friends.status.pending':  { en: 'Pending',                              es: 'Pendiente' },
   'invite.friends.status.approved': { en: 'Approved',                             es: 'Aprobado' },
   'invite.friends.status.rejected': { en: 'Rejected',                             es: 'Rechazado' },
+  'invite.friends.error.limit':    { en: 'You already have the maximum number of pending or approved invite requests. A rejected request frees its slot.', es: 'Ya tienes el máximo de solicitudes de invitación pendientes o aprobadas. Una solicitud rechazada libera su cupo.' },
   'invite.friends.limit':          { en: 'You have used all your invite slots. A rejected request frees its slot.',   es: 'Has utilizado todos tus cupos de invitación. Una solicitud rechazada libera su cupo.' },
 
   // My Plan (free/admin self-service)

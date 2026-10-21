@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 export interface QueryResult {
   data?: unknown;
-  error?: { message: string } | null;
+  error?: { message: string; code?: string } | null;
 }
 
 export type QueryMock = Record<string, Mock> & PromiseLike<QueryResult>;
