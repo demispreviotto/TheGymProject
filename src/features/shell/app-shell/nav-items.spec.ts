@@ -1,5 +1,5 @@
 import type { UserRole } from '../../../core/auth/auth.types';
-import { navItemsForRole } from './nav-items';
+import { isMoreActive, navItemsForRole } from './nav-items';
 
 const ROLES: UserRole[] = ['user', 'free', 'trainer', 'admin'];
 
@@ -51,6 +51,37 @@ describe('navItemsForRole', () => {
       expect(new Set(items.map(i => i.route)).size).toBe(items.length);
       expect(items.every(i => i.tabKey.startsWith('tab.') && i.labelKey.length > 0)).toBe(true);
     }
+  });
+
+  describe('isMoreActive', () => {
+    const admin = navItemsForRole('admin');
+    const free = navItemsForRole('free');
+
+    it('is true on pages that only live behind "More"', () => {
+      expect(isMoreActive(admin, '/my-plan/friends')).toBe(true);
+      expect(isMoreActive(admin, '/my-plan/exercises/new')).toBe(true);
+      expect(isMoreActive(free, '/profile')).toBe(true);
+    });
+
+    it('is false on a bottom tab, including its nested pages', () => {
+      expect(isMoreActive(admin, '/admin/requests')).toBe(false);
+      expect(isMoreActive(admin, '/my-plan/planning/new')).toBe(false);
+      expect(isMoreActive(free, '/dashboard')).toBe(false);
+    });
+
+    it('ignores the query string and fragment', () => {
+      expect(isMoreActive(free, '/profile?tab=push#top')).toBe(true);
+      expect(isMoreActive(free, '/dashboard?x=1')).toBe(false);
+    });
+
+    it('does not mistake a longer path for a prefix match', () => {
+      expect(isMoreActive(free, '/profile-settings')).toBe(false);
+    });
+
+    it('is false for roles whose pages are all tabs, and for unknown pages', () => {
+      expect(isMoreActive(navItemsForRole('user'), '/profile')).toBe(false);
+      expect(isMoreActive(admin, '/somewhere/else')).toBe(false);
+    });
   });
 
   it('falls back to the client navigation for a missing role', () => {

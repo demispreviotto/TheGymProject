@@ -4,6 +4,7 @@ import {
   completedCount,
   dayPosition,
   firstIncompleteId,
+  initialInputs,
   progressPercent,
   rowVolume,
   sessionVolume,
@@ -44,6 +45,31 @@ function makeRow(opts: RowOptions = {}): WorkoutRowState {
 }
 
 describe('workout-stats', () => {
+  describe('initialInputs', () => {
+    it('standard mode gives one shared pair, pre-filled with the suggestion and the target reps', () => {
+      expect(initialInputs({ tracking_mode: 'standard', rounds: 4, target_reps: 8 }, 62.5))
+        .toEqual([{ weight: 62.5, reps: 8 }]);
+    });
+
+    it('granular and failure modes give one independent pair per round', () => {
+      for (const mode of ['granular', 'failure'] as const) {
+        const inputs = initialInputs({ tracking_mode: mode, rounds: 3, target_reps: 10 }, 40);
+        expect(inputs).toHaveLength(3);
+        expect(inputs.every(i => i.weight === 40 && i.reps === 10)).toBe(true);
+      }
+    });
+
+    it('leaves the weight empty when there is no suggestion', () => {
+      expect(initialInputs({ tracking_mode: 'standard', rounds: 3, target_reps: 12 }, null))
+        .toEqual([{ weight: null, reps: 12 }]);
+    });
+
+    it('does not share one object between rounds', () => {
+      const [first, second] = initialInputs({ tracking_mode: 'granular', rounds: 2, target_reps: 5 }, 20);
+      expect(first).not.toBe(second);
+    });
+  });
+
   describe('completedCount / progressPercent', () => {
     it('counts only completed rows', () => {
       const rows = [makeRow({ done: true }), makeRow({ done: false }), makeRow({ done: true })];

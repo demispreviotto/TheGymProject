@@ -15,7 +15,7 @@ import type {
   InputChange, RoundInput, RoundInputField, WorkoutRowState,
 } from '../../../core/workout/workout-row.types';
 import {
-  completedCount, dayPosition, firstIncompleteId, progressPercent, sessionVolume,
+  completedCount, dayPosition, firstIncompleteId, initialInputs, progressPercent, sessionVolume,
 } from '../../../core/workout/workout-stats';
 import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
 import { WorkoutSummaryComponent } from './components/workout-summary.component';
@@ -426,11 +426,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
           p.target_reps,
           p.suggested_first_weight,
         );
-        const inputCount = p.tracking_mode === 'standard' ? 1 : p.rounds;
-        const inputs: RoundInput[] = Array.from({ length: inputCount }, () => ({
-          weight: null,
-          reps: null,
-        }));
+        const inputs = initialInputs(p, suggestedWeight);
         return { prescribed: p, suggestedWeight, inputs, isCompleted: false };
       }),
     );
