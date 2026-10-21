@@ -49,11 +49,7 @@ const TAB_BAR_HIDDEN = '[--tabbar-h:0px]';
       <!-- Mobile top bar -->
       <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 bg-neutral-950 px-4 flex items-center justify-between max-w-[100dvw]">
         <app-tenant-branding />
-        <app-user-avatar
-          [name]="auth.profile()?.name ?? null"
-          [showDot]="hasNotifications()"
-          [active]="profileActive()"
-        />
+        <app-user-avatar [showDot]="hasNotifications()" [active]="profileActive()" />
       </header>
 
       <!-- Desktop sidebar -->
