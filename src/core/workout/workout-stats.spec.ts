@@ -2,14 +2,21 @@ import type { TrackingMode } from '../planning/planning.types';
 import type { RoundInput, WorkoutRowState } from './workout-row.types';
 import {
   completedCount,
+  completedRounds,
+  completedVolume,
+  createRow,
+  currentRound,
   dayPosition,
   firstIncompleteId,
   initialInputs,
+  isRowCompleted,
+  lastDoneRound,
   progressPercent,
-  rowVolume,
+  roundCount,
   sessionVolume,
   suggestionSource,
   topWeight,
+  withRoundDone,
 } from './workout-stats';
 
 interface RowOptions {
@@ -18,12 +25,14 @@ interface RowOptions {
   rounds?: number;
   targetReps?: number;
   inputs?: RoundInput[];
-  done?: boolean;
+  /** Which rounds are done; defaults to none. `true` means all of them. */
+  done?: boolean[] | boolean;
 }
 
 function makeRow(opts: RowOptions = {}): WorkoutRowState {
   const mode = opts.mode ?? 'standard';
   const rounds = opts.rounds ?? 4;
+  const done = opts.done ?? false;
   return {
     prescribed: {
       id: opts.id ?? 'p1',
@@ -40,12 +49,17 @@ function makeRow(opts: RowOptions = {}): WorkoutRowState {
     },
     suggestedWeight: null,
     inputs: opts.inputs ?? [{ weight: null, reps: null }],
-    isCompleted: opts.done ?? false,
+    roundsDone: typeof done === 'boolean' ? Array.from({ length: rounds }, () => done) : done,
   };
 }
 
 describe('workout-stats', () => {
-  describe('initialInputs', () => {
+  describe('roundCount / initialInputs / createRow', () => {
+    it('tracks at least one round even when the plan says 0', () => {
+      expect(roundCount({ rounds: 4 })).toBe(4);
+      expect(roundCount({ rounds: 0 })).toBe(1);
+    });
+
     it('standard mode gives one shared pair, pre-filled with the suggestion and the target reps', () => {
       expect(initialInputs({ tracking_mode: 'standard', rounds: 4, target_reps: 8 }, 62.5))
         .toEqual([{ weight: 62.5, reps: 8 }]);
@@ -68,11 +82,57 @@ describe('workout-stats', () => {
       const [first, second] = initialInputs({ tracking_mode: 'granular', rounds: 2, target_reps: 5 }, 20);
       expect(first).not.toBe(second);
     });
+
+    it('createRow starts untouched: pre-filled inputs and no round done', () => {
+      const prescribed = makeRow({ mode: 'granular', rounds: 3 }).prescribed;
+      const row = createRow(prescribed, 50);
+      expect(row.inputs).toHaveLength(3);
+      expect(row.roundsDone).toEqual([false, false, false]);
+      expect(row.suggestedWeight).toBe(50);
+      expect(isRowCompleted(row)).toBe(false);
+    });
+  });
+
+  describe('round state', () => {
+    it('an exercise is completed only when every round is done', () => {
+      expect(isRowCompleted(makeRow({ done: true }))).toBe(true);
+      expect(isRowCompleted(makeRow({ done: [true, true, true, false] }))).toBe(false);
+      expect(isRowCompleted(makeRow({ done: false }))).toBe(false);
+    });
+
+    it('an exercise without rounds is never completed', () => {
+      expect(isRowCompleted(makeRow({ done: [] }))).toBe(false);
+    });
+
+    it('counts done rounds and finds the current and the last done round', () => {
+      const row = makeRow({ done: [true, true, false, false] });
+      expect(completedRounds(row)).toBe(2);
+      expect(currentRound(row)).toBe(2);
+      expect(lastDoneRound(row)).toBe(1);
+    });
+
+    it('reports -1 when there is no current or no done round', () => {
+      expect(currentRound(makeRow({ done: true }))).toBe(-1);
+      expect(lastDoneRound(makeRow({ done: false }))).toBe(-1);
+    });
+
+    it('the current round is the first gap, even if a later round is done', () => {
+      expect(currentRound(makeRow({ done: [true, false, true, false] }))).toBe(1);
+    });
+
+    it('withRoundDone returns a new array and ignores an out-of-range index', () => {
+      const original = [false, false, false];
+      const next = withRoundDone(original, 1, true);
+      expect(next).toEqual([false, true, false]);
+      expect(original).toEqual([false, false, false]);
+      expect(withRoundDone(original, 5, true)).toEqual([false, false, false]);
+      expect(withRoundDone(original, -1, true)).toEqual([false, false, false]);
+    });
   });
 
   describe('completedCount / progressPercent', () => {
-    it('counts only completed rows', () => {
-      const rows = [makeRow({ done: true }), makeRow({ done: false }), makeRow({ done: true })];
+    it('counts only fully completed exercises', () => {
+      const rows = [makeRow({ done: true }), makeRow({ done: [true, false, false, false] }), makeRow({ done: true })];
       expect(completedCount(rows)).toBe(2);
       expect(completedCount([])).toBe(0);
     });
@@ -84,18 +144,23 @@ describe('workout-stats', () => {
     });
   });
 
-  describe('rowVolume', () => {
-    it('standard mode multiplies the shared pair by the number of rounds', () => {
-      const row = makeRow({ rounds: 4, inputs: [{ weight: 70, reps: 8 }] });
-      expect(rowVolume(row)).toBe(70 * 8 * 4);
+  describe('completedVolume', () => {
+    it('standard mode multiplies the shared pair by the rounds done so far', () => {
+      const row = makeRow({ rounds: 4, inputs: [{ weight: 70, reps: 8 }], done: [true, true, false, false] });
+      expect(completedVolume(row)).toBe(70 * 8 * 2);
+    });
+
+    it('is zero until a round is done', () => {
+      expect(completedVolume(makeRow({ inputs: [{ weight: 70, reps: 8 }] }))).toBe(0);
     });
 
     it('falls back to the target reps and a zero weight when inputs are empty', () => {
-      expect(rowVolume(makeRow({ rounds: 3, targetReps: 10 }))).toBe(0);
-      expect(rowVolume(makeRow({ rounds: 3, targetReps: 10, inputs: [{ weight: 20, reps: null }] }))).toBe(20 * 10 * 3);
+      expect(completedVolume(makeRow({ rounds: 3, targetReps: 10, done: true }))).toBe(0);
+      const row = makeRow({ rounds: 3, targetReps: 10, inputs: [{ weight: 20, reps: null }], done: true });
+      expect(completedVolume(row)).toBe(20 * 10 * 3);
     });
 
-    it('granular mode sums each round independently', () => {
+    it('granular mode sums only the rounds that are done, each with its own pair', () => {
       const row = makeRow({
         mode: 'granular',
         rounds: 3,
@@ -104,21 +169,23 @@ describe('workout-stats', () => {
           { weight: 62.5, reps: 8 },
           { weight: 65, reps: 6 },
         ],
+        done: [true, false, true],
       });
-      expect(rowVolume(row)).toBe(600 + 500 + 390);
+      expect(completedVolume(row)).toBe(600 + 390);
     });
 
     it('does not accumulate floating point noise', () => {
-      const row = makeRow({ rounds: 3, inputs: [{ weight: 22.5, reps: 7 }] });
-      expect(rowVolume(row)).toBe(472.5);
+      const row = makeRow({ rounds: 3, inputs: [{ weight: 22.5, reps: 7 }], done: true });
+      expect(completedVolume(row)).toBe(472.5);
     });
   });
 
   describe('sessionVolume', () => {
-    it('counts completed exercises only', () => {
-      const done = makeRow({ id: 'a', rounds: 2, inputs: [{ weight: 50, reps: 10 }], done: true });
-      const pending = makeRow({ id: 'b', rounds: 2, inputs: [{ weight: 100, reps: 10 }], done: false });
-      expect(sessionVolume([done, pending])).toBe(1000);
+    it('adds the done rounds of every exercise, including partly finished ones', () => {
+      const finished = makeRow({ id: 'a', rounds: 2, inputs: [{ weight: 50, reps: 10 }], done: true });
+      const partial = makeRow({ id: 'b', rounds: 4, inputs: [{ weight: 100, reps: 5 }], done: [true, false, false, false] });
+      const untouched = makeRow({ id: 'c', rounds: 3, inputs: [{ weight: 80, reps: 8 }] });
+      expect(sessionVolume([finished, partial, untouched])).toBe(1000 + 500);
     });
 
     it('is zero for an empty session', () => {
@@ -191,6 +258,11 @@ describe('workout-stats', () => {
     it('returns the first pending exercise in order', () => {
       const rows = [makeRow({ id: 'a', done: true }), makeRow({ id: 'b' }), makeRow({ id: 'c' })];
       expect(firstIncompleteId(rows)).toBe('b');
+    });
+
+    it('treats a partly finished exercise as still current', () => {
+      const rows = [makeRow({ id: 'a', done: [true, true, false, false] }), makeRow({ id: 'b' })];
+      expect(firstIncompleteId(rows)).toBe('a');
     });
 
     it('returns null when everything is done or there are no rows', () => {

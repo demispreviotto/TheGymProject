@@ -20,5 +20,6 @@ export interface WorkoutRowState {
   prescribed: WorkoutPrescribed;
   suggestedWeight: number | null;
   inputs: RoundInput[];
-  isCompleted: boolean;
+  /** One flag per round. The exercise is completed when every round is done (see isRowCompleted). */
+  roundsDone: boolean[];
 }
