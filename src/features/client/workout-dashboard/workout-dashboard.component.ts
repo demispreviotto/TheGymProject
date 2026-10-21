@@ -15,7 +15,8 @@ import type {
   InputChange, RoundInput, RoundInputField, WorkoutRowState,
 } from '../../../core/workout/workout-row.types';
 import {
-  completedCount, dayPosition, firstIncompleteId, initialInputs, progressPercent, sessionVolume,
+  completedCount, createRow, currentRound, dayPosition, firstIncompleteId, isRowCompleted,
+  progressPercent, sessionVolume, withRoundDone,
 } from '../../../core/workout/workout-stats';
 import { SessionClock } from '../../../core/workout/session-clock';
 import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
@@ -118,7 +119,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
               [timerBusy]="timerService.isActive()"
               (expand)="openCard(row.prescribed.id)"
               (inputChange)="setInput(i, $event)"
-              (completeToggle)="toggleComplete(i)"
+              (completeSet)="completeSet(i)"
+              (undoRound)="undoRound(i, $event)"
               (timerStart)="startTimer(row.prescribed.rest_time_minutes)"
             />
           }
@@ -255,28 +257,35 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     value: number | null,
   ): void {
     this.clock.start();
-    this.rows.update(rows => {
-      const updated = [...rows];
-      const row = { ...updated[rowIndex] };
+    this.updateRow(rowIndex, row => {
       const inputs: RoundInput[] = [...row.inputs];
       inputs[roundIndex] = { ...inputs[roundIndex], [field]: value };
-      row.inputs = inputs;
-      updated[rowIndex] = row;
-      return updated;
+      return { ...row, inputs };
     });
   }
 
-  toggleComplete(rowIndex: number): void {
+  /**
+   * Finishes the exercise's current round. Between rounds it starts the exercise's rest timer;
+   * once the last round is done the open card moves on to the next unfinished exercise.
+   */
+  completeSet(rowIndex: number): void {
+    const row = this.rows()[rowIndex];
+    const round = currentRound(row);
+    if (round === -1) return;
+
     this.clock.start();
-    this.rows.update(rows => {
-      const updated = [...rows];
-      updated[rowIndex] = { ...updated[rowIndex], isCompleted: !updated[rowIndex].isCompleted };
-      return updated;
-    });
-    // Hand the open card back to the current exercise, so completing one moves on to the next.
-    this.manualOpenId.set(null);
-    const currentId = this.openId();
-    if (currentId !== null) this.scrollToCard(currentId);
+    this.updateRow(rowIndex, r => ({ ...r, roundsDone: withRoundDone(r.roundsDone, round, true) }));
+
+    if (isRowCompleted(this.rows()[rowIndex])) {
+      this.advanceToCurrentExercise();
+    } else if (row.prescribed.rest_time_minutes > 0) {
+      this.startTimer(row.prescribed.rest_time_minutes);
+    }
+  }
+
+  /** Reopens a finished round so it can be edited and completed again. */
+  undoRound(rowIndex: number, roundIndex: number): void {
+    this.updateRow(rowIndex, r => ({ ...r, roundsDone: withRoundDone(r.roundsDone, roundIndex, false) }));
   }
 
   openCard(prescribedId: string): void {
@@ -323,7 +332,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
             round_number: r,
             weight_used: inp.weight ?? 0,
             reps_performed: inp.reps ?? p.target_reps,
-            is_completed: row.isCompleted,
+            is_completed: row.roundsDone[r - 1] ?? false,
           });
         }
       } else {
@@ -333,7 +342,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
             round_number: idx + 1,
             weight_used: inp.weight ?? 0,
             reps_performed: inp.reps ?? p.target_reps,
-            is_completed: row.isCompleted,
+            is_completed: row.roundsDone[idx] ?? false,
           });
         });
       }
@@ -385,6 +394,17 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     await this.loadWorkout();
   }
 
+  private updateRow(rowIndex: number, change: (row: WorkoutRowState) => WorkoutRowState): void {
+    this.rows.update(rows => rows.map((row, index) => (index === rowIndex ? change(row) : row)));
+  }
+
+  /** Hands the open card back to the current exercise, so finishing one moves on to the next. */
+  private advanceToCurrentExercise(): void {
+    this.manualOpenId.set(null);
+    const currentId = this.openId();
+    if (currentId !== null) this.scrollToCard(currentId);
+  }
+
   /** Scrolls a card to the top once the newly opened layout has rendered. */
   private scrollToCard(prescribedId: string): void {
     afterNextRender(() => {
@@ -434,8 +454,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
           p.target_reps,
           p.suggested_first_weight,
         );
-        const inputs = initialInputs(p, suggestedWeight);
-        return { prescribed: p, suggestedWeight, inputs, isCompleted: false };
+        return createRow(p, suggestedWeight);
       }),
     );
 

@@ -6,6 +6,13 @@ export interface DayPosition {
   total: number;
 }
 
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/** Number of rounds to track. A plan with 0 rounds still gets one, so the exercise can be completed. */
+export function roundCount(prescribed: Pick<WorkoutPrescribed, 'rounds'>): number {
+  return Math.max(1, prescribed.rounds);
+}
+
 /**
  * Starting inputs of an exercise: one shared pair in standard mode, one pair per round otherwise,
  * pre-filled with the suggested weight and the target reps. What the user sees on screen is then
@@ -15,12 +22,47 @@ export function initialInputs(
   prescribed: Pick<WorkoutPrescribed, 'tracking_mode' | 'rounds' | 'target_reps'>,
   suggestedWeight: number | null,
 ): RoundInput[] {
-  const count = prescribed.tracking_mode === 'standard' ? 1 : prescribed.rounds;
+  const count = prescribed.tracking_mode === 'standard' ? 1 : roundCount(prescribed);
   return Array.from({ length: count }, () => ({ weight: suggestedWeight, reps: prescribed.target_reps }));
 }
 
+/** A fresh, untouched exercise row: pre-filled inputs and no round done. */
+export function createRow(prescribed: WorkoutPrescribed, suggestedWeight: number | null): WorkoutRowState {
+  return {
+    prescribed,
+    suggestedWeight,
+    inputs: initialInputs(prescribed, suggestedWeight),
+    roundsDone: Array.from({ length: roundCount(prescribed) }, () => false),
+  };
+}
+
+export function isRowCompleted(row: WorkoutRowState): boolean {
+  return row.roundsDone.length > 0 && row.roundsDone.every(Boolean);
+}
+
+export function completedRounds(row: WorkoutRowState): number {
+  return row.roundsDone.filter(Boolean).length;
+}
+
+/** Index of the first round not yet done, or -1 when every round is done. */
+export function currentRound(row: WorkoutRowState): number {
+  return row.roundsDone.indexOf(false);
+}
+
+/** Index of the last round that is done, or -1 when none is. */
+export function lastDoneRound(row: WorkoutRowState): number {
+  return row.roundsDone.lastIndexOf(true);
+}
+
+/** Copy of `roundsDone` with one round set. An out-of-range index changes nothing. */
+export function withRoundDone(roundsDone: readonly boolean[], index: number, done: boolean): boolean[] {
+  const next = [...roundsDone];
+  if (index >= 0 && index < next.length) next[index] = done;
+  return next;
+}
+
 export function completedCount(rows: readonly WorkoutRowState[]): number {
-  return rows.filter(r => r.isCompleted).length;
+  return rows.filter(isRowCompleted).length;
 }
 
 export function progressPercent(done: number, total: number): number {
@@ -29,25 +71,23 @@ export function progressPercent(done: number, total: number): number {
 }
 
 /**
- * Volume (weight × reps, summed over rounds) of one exercise, using the same
- * fallbacks as the saved log: empty weight counts as 0, empty reps as the target.
+ * Volume (weight × reps) of the rounds already done in one exercise, with the same fallbacks as
+ * the saved log: empty weight counts as 0, empty reps as the target. Standard mode uses its single
+ * shared pair for every round; the other modes use each round's own pair.
  */
-export function rowVolume(row: WorkoutRowState): number {
-  const { tracking_mode, rounds, target_reps } = row.prescribed;
-  const volumeOf = (weight: number | null, reps: number | null): number =>
-    (weight ?? 0) * (reps ?? target_reps);
-
-  const total = tracking_mode === 'standard'
-    ? volumeOf(row.inputs[0]?.weight ?? null, row.inputs[0]?.reps ?? null) * rounds
-    : row.inputs.reduce((sum, inp) => sum + volumeOf(inp.weight, inp.reps), 0);
-
-  return Math.round(total * 100) / 100;
+export function completedVolume(row: WorkoutRowState): number {
+  const { tracking_mode, target_reps } = row.prescribed;
+  const total = row.roundsDone.reduce((sum, done, index) => {
+    const input = tracking_mode === 'standard' ? row.inputs[0] : row.inputs[index];
+    if (!done || !input) return sum;
+    return sum + (input.weight ?? 0) * (input.reps ?? target_reps);
+  }, 0);
+  return round2(total);
 }
 
-/** Total volume of the exercises already marked as completed. */
+/** Total volume of every round done so far in the session. */
 export function sessionVolume(rows: readonly WorkoutRowState[]): number {
-  const total = rows.filter(r => r.isCompleted).reduce((sum, r) => sum + rowVolume(r), 0);
-  return Math.round(total * 100) / 100;
+  return round2(rows.reduce((sum, row) => sum + completedVolume(row), 0));
 }
 
 /**
@@ -79,5 +119,5 @@ export function suggestionSource(row: WorkoutRowState, usesAutoRm: boolean): Sug
 
 /** Id of the first exercise not yet completed: the "current" one. Null when all are done. */
 export function firstIncompleteId(rows: readonly WorkoutRowState[]): string | null {
-  return rows.find(r => !r.isCompleted)?.prescribed.id ?? null;
+  return rows.find(r => !isRowCompleted(r))?.prescribed.id ?? null;
 }

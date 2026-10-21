@@ -1,9 +1,12 @@
-import { Component, computed, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, inject, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { LanguageService } from '../../../../core/i18n/language.service';
 import { ExigenceBadgeComponent } from '../../../../shared/components/exigence-badge/exigence-badge.component';
 import { MuscleChipsComponent } from '../../../../shared/components/muscle-chips/muscle-chips.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
-import { suggestionSource, topWeight } from '../../../../core/workout/workout-stats';
+import {
+  completedRounds, currentRound, isRowCompleted, lastDoneRound, suggestionSource, topWeight,
+} from '../../../../core/workout/workout-stats';
 import type { InputChange, WorkoutRowState } from '../../../../core/workout/workout-row.types';
 import { SetInputsComponent } from './set-inputs.component';
 import { SuggestionChipComponent } from './suggestion-chip.component';
@@ -74,12 +77,46 @@ const STATE_ICON_BASE = 'flex h-9 w-9 flex-shrink-0 items-center justify-center 
             }
           </div>
 
-          <app-set-inputs [row]="row()" (inputChange)="inputChange.emit($event)" />
+          <app-set-inputs
+            [row]="row()"
+            (inputChange)="inputChange.emit($event)"
+            (undoRound)="undoRound.emit($event)"
+          />
 
-          <button type="button" (click)="completeToggle.emit()" [class]="actionClass()">
-            <app-icon name="check" iconClass="w-5 h-5 fill-current" />
-            {{ (row().isCompleted ? 'dashboard.completed' : 'dashboard.complete') | translate }}
-          </button>
+          <div class="space-y-1">
+            @if (completed()) {
+              <button
+                type="button"
+                (click)="undoRound.emit(lastDone())"
+                [attr.aria-label]="'dashboard.undoround' | translate"
+                [class]="doneClass"
+              >
+                <app-icon name="check" iconClass="w-5 h-5 fill-current" />
+                {{ 'dashboard.completed' | translate }}
+              </button>
+            } @else {
+              <button type="button" (click)="completeSet.emit()" [class]="pendingClass">
+                <app-icon name="check" iconClass="w-5 h-5 fill-current" />
+                <span class="tabular-nums">{{ 'dashboard.completeround' | translate }} {{ current() + 1 }}/{{ rounds() }}</span>
+                @if (restFollows()) {
+                  <span class="flex items-center gap-1 tabular-nums opacity-80">
+                    <span aria-hidden="true">·</span>
+                    <app-icon name="timer" iconClass="w-4 h-4 fill-current" />
+                    {{ row().prescribed.rest_time_minutes }} min
+                  </span>
+                }
+              </button>
+              @if (isStandard() && doneCount() > 0) {
+                <button
+                  type="button"
+                  (click)="undoRound.emit(lastDone())"
+                  class="flex h-11 w-full items-center justify-center rounded-xl text-xs font-semibold text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100"
+                >
+                  {{ 'dashboard.undoround' | translate }}
+                </button>
+              }
+            }
+          </div>
         </div>
 
       } @else {
@@ -87,12 +124,12 @@ const STATE_ICON_BASE = 'flex h-9 w-9 flex-shrink-0 items-center justify-center 
           type="button"
           (click)="expand.emit()"
           aria-expanded="false"
-          [attr.aria-label]="name() + ', ' + summary() + (row().isCompleted ? ', ' + ('dashboard.completed' | translate) : '')"
+          [attr.aria-label]="name() + ', ' + summary() + (completed() ? ', ' + ('dashboard.completed' | translate) : '')"
           class="flex min-h-16 w-full items-center justify-between gap-3 rounded-xl p-4 text-left transition-colors hover:bg-neutral-800/40 active:bg-neutral-800"
         >
           <span class="flex min-w-0 items-center gap-3">
             <span [class]="stateIconClass()">
-              <app-icon [name]="row().isCompleted ? 'checks' : 'barbell'" iconClass="w-5 h-5 fill-current" />
+              <app-icon [name]="completed() ? 'checks' : 'barbell'" iconClass="w-5 h-5 fill-current" />
             </span>
             <span class="min-w-0">
               <span class="flex items-center gap-2">
@@ -109,6 +146,8 @@ const STATE_ICON_BASE = 'flex h-9 w-9 flex-shrink-0 items-center justify-center 
   `,
 })
 export class ExerciseCardComponent {
+  private readonly lang = inject(LanguageService);
+
   readonly row = input.required<WorkoutRowState>();
   readonly expanded = input.required<boolean>();
   readonly usesAutoRm = input(false);
@@ -118,24 +157,43 @@ export class ExerciseCardComponent {
   /** The user tapped a collapsed card. */
   readonly expand = output<void>();
   readonly inputChange = output<InputChange>();
-  readonly completeToggle = output<void>();
+  /** The user finished the current round. */
+  readonly completeSet = output<void>();
+  /** The user asked to reopen a finished round (by index). */
+  readonly undoRound = output<number>();
   readonly timerStart = output<void>();
+
+  readonly pendingClass = ACTION_PENDING;
+  readonly doneClass = ACTION_DONE;
 
   readonly domId = computed(() => exerciseCardDomId(this.row().prescribed.id));
   readonly name = computed(() => this.row().prescribed.exercise?.name ?? 'Exercise');
   readonly source = computed(() => suggestionSource(this.row(), this.usesAutoRm()));
 
-  readonly actionClass = computed(() => (this.row().isCompleted ? ACTION_DONE : ACTION_PENDING));
+  readonly completed = computed(() => isRowCompleted(this.row()));
+  readonly current = computed(() => currentRound(this.row()));
+  readonly lastDone = computed(() => lastDoneRound(this.row()));
+  readonly doneCount = computed(() => completedRounds(this.row()));
+  readonly rounds = computed(() => this.row().roundsDone.length);
+  readonly isStandard = computed(() => this.row().prescribed.tracking_mode === 'standard');
 
-  readonly stateIconClass = computed(() =>
-    `${STATE_ICON_BASE} ${this.row().isCompleted ? 'bg-green-500/15 text-green-400' : 'bg-neutral-800 text-neutral-400'}`,
+  /** A rest follows this round: it is not the last one and the plan prescribes a rest. */
+  readonly restFollows = computed(
+    () => this.current() < this.rounds() - 1 && this.row().prescribed.rest_time_minutes > 0,
   );
 
-  /** "4 × 8 · 70 kg": the weight actually lifted once done, the suggestion while pending. */
+  readonly stateIconClass = computed(() =>
+    `${STATE_ICON_BASE} ${this.completed() ? 'bg-green-500/15 text-green-400' : 'bg-neutral-800 text-neutral-400'}`,
+  );
+
+  /** "4 × 8 · 70 kg" when untouched or done, "2/4 rounds · 70 kg" while in progress. */
   readonly summary = computed(() => {
     const row = this.row();
-    const weight = row.isCompleted ? topWeight(row) : row.suggestedWeight;
-    const scheme = `${row.prescribed.rounds} × ${row.prescribed.target_reps}`;
+    const weight = topWeight(row);
+    const inProgress = this.doneCount() > 0 && !this.completed();
+    const scheme = inProgress
+      ? `${this.doneCount()}/${this.rounds()} ${this.lang.t('dashboard.rounds')}`
+      : `${row.prescribed.rounds} × ${row.prescribed.target_reps}`;
     return weight === null ? scheme : `${scheme} · ${weight} kg`;
   });
 }
