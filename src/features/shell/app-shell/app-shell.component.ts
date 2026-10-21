@@ -14,18 +14,30 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { Language } from '../../../core/auth/auth.types';
 import { BottomTabBarComponent } from '../bottom-tab-bar/bottom-tab-bar.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
-import { isNavItemActive, navItemsForRole, type NavItem } from './nav-items';
+import {
+  PROFILE_NAV_ITEM, isNavItemActive, navItemsForRole, showsTabBar, sidebarItemsForRole, type NavItem,
+} from './nav-items';
 
 const NAV_LINK_BASE = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors';
 
 /**
- * App layout. Below `lg` it is a top bar plus a bottom tab bar (language and sign-out live on the
- * profile page there); from `lg` up it is a fixed sidebar.
+ * Height of the bottom tab bar's content, exposed as a CSS variable so everything that sits above it
+ * (page padding, snap-panel height, the rest-timer toast) follows whether the bar is shown. The safe
+ * area inset is added where the variable is used, because it applies with or without the bar.
+ */
+const TAB_BAR_SHOWN = '[--tabbar-h:4rem]';
+const TAB_BAR_HIDDEN = '[--tabbar-h:0px]';
+
+/**
+ * App layout. Below `lg` it is a top bar (tenant, and the avatar that opens the profile) plus a
+ * bottom tab bar when the role has several pages; language and sign-out live on the profile page
+ * there. From `lg` up it is a fixed sidebar that also lists Profile.
  */
 @Component({
   selector: 'app-shell',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class]': 'layoutVars()' },
   imports: [
     RouterOutlet, RouterLink, TenantBrandingComponent, CountdownTimerComponent,
     TranslatePipe, AppIconComponent, BottomTabBarComponent, UserAvatarComponent,
@@ -36,7 +48,11 @@ const NAV_LINK_BASE = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm tran
       <!-- Mobile top bar -->
       <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 border-b border-neutral-800 bg-neutral-950 px-4 flex items-center justify-between max-w-[100dvw]">
         <app-tenant-branding />
-        <app-user-avatar [name]="auth.profile()?.name ?? null" [showDot]="hasNotifications()" />
+        <app-user-avatar
+          [name]="auth.profile()?.name ?? null"
+          [showDot]="hasNotifications()"
+          [active]="profileActive()"
+        />
       </header>
 
       <!-- Desktop sidebar -->
@@ -47,7 +63,7 @@ const NAV_LINK_BASE = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm tran
         </div>
 
         <nav class="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
-          @for (item of navItems(); track item.route) {
+          @for (item of sidebarItems(); track item.route) {
             <a [routerLink]="item.route" [class]="navLinkClass(item)">
               <app-icon [name]="item.icon" iconClass="w-4 h-4 flex-shrink-0" />
               {{ item.labelKey | translate }}
@@ -86,13 +102,15 @@ const NAV_LINK_BASE = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm tran
       <!-- Page content -->
       <div class="flex-1 lg:ml-56 flex flex-col min-h-screen">
         <div class="h-14 lg:hidden flex-shrink-0"></div>
-        <main class="flex-1 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-6 overflow-y-auto max-w-[100dvw]">
+        <main class="flex-1 p-4 pb-[calc(var(--tabbar-h)_+_1.5rem_+_env(safe-area-inset-bottom))] lg:p-6 overflow-y-auto max-w-[100dvw]">
           <router-outlet />
         </main>
       </div>
     </div>
 
-    <app-bottom-tab-bar [items]="navItems()" [currentUrl]="currentUrl()" />
+    @if (showTabBar()) {
+      <app-bottom-tab-bar [items]="navItems()" [currentUrl]="currentUrl()" />
+    }
     <app-countdown-timer />
   `,
 })
@@ -119,7 +137,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
     return role === 'free' || role === 'admin';
   });
 
+  /** The role's pages: one bottom tab each. */
   readonly navItems = computed(() => navItemsForRole(this.auth.profile()?.role));
+  /** The same pages plus Profile, for the desktop sidebar (which has no avatar). */
+  readonly sidebarItems = computed(() => sidebarItemsForRole(this.auth.profile()?.role));
+  readonly showTabBar = computed(() => showsTabBar(this.navItems()));
+  readonly layoutVars = computed(() => (this.showTabBar() ? TAB_BAR_SHOWN : TAB_BAR_HIDDEN));
+  readonly profileActive = computed(() => isNavItemActive(PROFILE_NAV_ITEM, this.currentUrl()));
 
   /** Pending friend requests (free/admin) or pending invite requests (admin) are waiting for an answer. */
   readonly hasNotifications = computed(

@@ -68,7 +68,7 @@ import { AppIconComponent } from '../../ui/icons/app-icon.component';
       } @else {
         <!-- Minimised toast -->
         <div
-          class="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] lg:bottom-6 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 cursor-pointer select-none items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/95 py-2 pl-4 pr-2 shadow-xl backdrop-blur-md"
+          class="fixed bottom-[calc(var(--tabbar-h,4rem)_+_1rem_+_env(safe-area-inset-bottom))] left-1/2 z-[60] lg:bottom-6 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 cursor-pointer select-none items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/95 py-2 pl-4 pr-2 shadow-xl backdrop-blur-md"
           (click)="timer.toggle()"
         >
           <app-icon name="timer" iconClass="w-4 h-4 flex-shrink-0 fill-current text-neutral-400" />

@@ -18,7 +18,12 @@ export interface NavItem {
 }
 
 const WORKOUT: NavItem = { route: '/dashboard', icon: 'barbell', labelKey: 'nav.workout', tabKey: 'tab.workout', exact: true };
-const PROFILE: NavItem = { route: '/profile', icon: 'user', labelKey: 'nav.profile', tabKey: 'tab.profile' };
+
+/**
+ * Profile is not a tab: on mobile it opens from the avatar in the top bar. The desktop sidebar has
+ * no avatar, so it appends this item itself (see sidebarItemsForRole).
+ */
+export const PROFILE_NAV_ITEM: NavItem = { route: '/profile', icon: 'user', labelKey: 'nav.profile', tabKey: 'tab.profile' };
 
 const TRAINER_EXERCISES: NavItem = { route: '/trainer/exercises', icon: 'list-numbers', labelKey: 'nav.exercises', tabKey: 'tab.exercises' };
 const TRAINER_PLANS: NavItem = { route: '/trainer/planning', icon: 'calendar', labelKey: 'nav.plans', tabKey: 'tab.plans' };
@@ -35,19 +40,35 @@ const MY_LIBRARY: NavItem = {
 };
 const MY_FRIENDS: NavItem = { route: '/my-plan/friends', icon: 'users', labelKey: 'nav.myplan.friends', tabKey: 'tab.friends' };
 
-/** Most items any role has: the bottom tab bar shows them all, so it must stay at this size or below. */
+/** Most pages any role has: the bottom tab bar shows them all, so it must stay at this size or below. */
 export const MAX_NAV_ITEMS = 5;
 
+/** Fewest tabs worth showing a bottom bar for; a lone "Workout" tab is just clutter. */
+export const MIN_TABS_FOR_BAR = 2;
+
 const NAV_BY_ROLE: Record<UserRole, readonly NavItem[]> = {
-  user: [WORKOUT, PROFILE],
-  free: [WORKOUT, MY_LIBRARY, MY_FRIENDS, PROFILE],
-  trainer: [WORKOUT, TRAINER_EXERCISES, TRAINER_PLANS, TRAINER_CLIENTS, PROFILE],
-  admin: [WORKOUT, ADMIN_PANEL, MY_LIBRARY, MY_FRIENDS, PROFILE],
+  user: [WORKOUT],
+  free: [WORKOUT, MY_LIBRARY, MY_FRIENDS],
+  trainer: [WORKOUT, TRAINER_EXERCISES, TRAINER_PLANS, TRAINER_CLIENTS],
+  admin: [WORKOUT, ADMIN_PANEL, MY_LIBRARY, MY_FRIENDS],
 };
 
-/** Navigation items for a role, in sidebar and tab-bar order. An unknown or missing role gets the plain client navigation. */
+/**
+ * The pages of a role, in tab-bar order (Profile excluded: it lives behind the avatar). An unknown
+ * or missing role gets the plain client navigation.
+ */
 export function navItemsForRole(role: UserRole | null | undefined): readonly NavItem[] {
   return NAV_BY_ROLE[role ?? 'user'];
+}
+
+/** The desktop sidebar: the role's pages, then Profile. */
+export function sidebarItemsForRole(role: UserRole | null | undefined): readonly NavItem[] {
+  return [...navItemsForRole(role), PROFILE_NAV_ITEM];
+}
+
+/** Whether the mobile bottom bar is worth showing for these pages. */
+export function showsTabBar(items: readonly NavItem[]): boolean {
+  return items.length >= MIN_TABS_FOR_BAR;
 }
 
 const underPath = (path: string, prefix: string): boolean => path === prefix || path.startsWith(`${prefix}/`);
