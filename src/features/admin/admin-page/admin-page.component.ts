@@ -4,7 +4,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AdminInviteRequestsComponent } from '../invite-requests/admin-invite-requests.component';
 import { AdminUsersComponent } from '../users/admin-users.component';
 
-/** Admin home: invite requests and users on one page, each in its own snap panel. */
+/** Admin home: invite requests and users on one page, switched between (one at a time, no split view). */
 @Component({
   selector: 'app-admin-page',
   standalone: true,
@@ -14,6 +14,7 @@ import { AdminUsersComponent } from '../users/admin-users.component';
     <app-snap-panels
       [firstLabel]="'admin.requests.short' | translate"
       [secondLabel]="'admin.users.title' | translate"
+      [allowSplit]="false"
     >
       <app-admin-invite-requests first embedded />
       <app-admin-users second embedded />
