@@ -1,6 +1,31 @@
-import { DEFAULT_PANEL_LAYOUT, isPanelHidden, panelGridClass } from './snap-panels.layout';
+import { DEFAULT_PANEL_LAYOUT, effectiveLayout, isPanelHidden, panelGridClass } from './snap-panels.layout';
 
 describe('snap-panels layout', () => {
+  describe('effectiveLayout', () => {
+    it('leaves the layout alone when the split view is allowed', () => {
+      expect(effectiveLayout('split', true)).toBe('split');
+      expect(effectiveLayout('first', true)).toBe('first');
+      expect(effectiveLayout('second', true)).toBe('second');
+    });
+
+    it('falls back to the first panel when the split view is not allowed', () => {
+      expect(effectiveLayout('split', false)).toBe('first');
+    });
+
+    it('keeps an explicit single-panel choice when the split view is not allowed', () => {
+      expect(effectiveLayout('first', false)).toBe('first');
+      expect(effectiveLayout('second', false)).toBe('second');
+    });
+
+    it('always shows exactly one panel when the split view is not allowed', () => {
+      for (const layout of ['split', 'first', 'second'] as const) {
+        const shown = effectiveLayout(layout, false);
+        const hidden = (['first', 'second'] as const).filter(slot => isPanelHidden(shown, slot));
+        expect(hidden).toHaveLength(1);
+      }
+    });
+  });
+
   it('shows both panels at half height by default', () => {
     expect(DEFAULT_PANEL_LAYOUT).toBe('split');
     expect(panelGridClass('split')).toContain('grid-rows-[1fr_1fr]');
