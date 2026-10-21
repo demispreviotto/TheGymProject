@@ -19,6 +19,8 @@ import {
   progressPercent, sessionVolume, withRoundDone,
 } from '../../../core/workout/workout-stats';
 import { SessionClock } from '../../../core/workout/session-clock';
+import { applyDraft, draftKey, toDraft } from '../../../core/workout/workout-draft';
+import { WorkoutDraftService } from '../../../core/workout/workout-draft.service';
 import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
 import { WorkoutSummaryComponent } from './components/workout-summary.component';
 
@@ -192,6 +194,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   readonly router = inject(Router);
   readonly timerService = inject(CountdownTimerService);
   readonly clock = inject(SessionClock);
+  private readonly drafts = inject(WorkoutDraftService);
 
   readonly loading = signal(true);
   readonly plan = signal<WorkoutPlanFull | null>(null);
@@ -240,6 +243,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   readonly connectError = signal<string | null>(null);
 
   async ngOnInit(): Promise<void> {
+    this.drafts.pruneStale();
     if (this.isSelfManagedUser()) {
       this.planningService.loadPlannings();
     }
@@ -363,6 +367,9 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // The workout is saved: its draft must go, or reloading would bring the finished rounds back.
+    const key = this.currentDraftKey();
+    if (key !== null) this.drafts.clear(key);
     this.finishDrawerOpen.set(false);
     await this.loadWorkout();
   }
@@ -394,8 +401,31 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     await this.loadWorkout();
   }
 
+  /** The single place rows change: every edit is also saved, so progress survives leaving the page. */
   private updateRow(rowIndex: number, change: (row: WorkoutRowState) => WorkoutRowState): void {
     this.rows.update(rows => rows.map((row, index) => (index === rowIndex ? change(row) : row)));
+    this.persistDraft();
+  }
+
+  private currentDraftKey(): string | null {
+    const userId = this.auth.profile()?.id;
+    const planId = this.assignedPlanId();
+    return userId && planId ? draftKey(userId, planId, this.activeDay()) : null;
+  }
+
+  private persistDraft(): void {
+    const key = this.currentDraftKey();
+    if (key === null || this.rows().length === 0) return;
+    this.drafts.save(key, toDraft(this.rows(), this.clock.startedAt(), Date.now()));
+  }
+
+  /** Lays the saved draft (if any) over freshly loaded rows and resumes the session clock. */
+  private restoreDraft(key: string, fresh: WorkoutRowState[]): WorkoutRowState[] {
+    const draft = this.drafts.load(key);
+    const restored = applyDraft(fresh, draft);
+    const applied = restored.some((row, index) => row !== fresh[index]);
+    if (draft !== null && draft.startedAt !== null && applied) this.clock.start(draft.startedAt);
+    return restored;
   }
 
   /** Hands the open card back to the current exercise, so finishing one moves on to the next. */
@@ -458,9 +488,10 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
       }),
     );
 
+    const restored = this.restoreDraft(draftKey(profile.id, planId, activeDay), rows);
     this.plan.set(planFull);
     this.activeDay.set(activeDay);
-    this.rows.set(rows);
+    this.rows.set(restored);
     this.loading.set(false);
   }
 }

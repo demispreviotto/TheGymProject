@@ -61,6 +61,30 @@ describe('SessionClock', () => {
     expect(clock.elapsedSeconds()).toBe(2);
   });
 
+  it('exposes the start time, which stays fixed while running and clears on reset', () => {
+    expect(clock.startedAt()).toBeNull();
+    const before = Date.now();
+    clock.start();
+    expect(clock.startedAt()).toBe(before);
+    vi.advanceTimersByTime(5000);
+    clock.start();
+    expect(clock.startedAt()).toBe(before);
+    clock.reset();
+    expect(clock.startedAt()).toBeNull();
+  });
+
+  it('carries on from an earlier start when restoring a session', () => {
+    clock.start(Date.now() - 125_000);
+    expect(clock.elapsedSeconds()).toBe(125);
+    vi.advanceTimersByTime(3000);
+    expect(clock.elapsedSeconds()).toBe(128);
+  });
+
+  it('never goes negative if the restored start is in the future', () => {
+    clock.start(Date.now() + 60_000);
+    expect(clock.elapsedSeconds()).toBe(0);
+  });
+
   it('clears the interval when destroyed', () => {
     clock.start();
     clock.ngOnDestroy();
