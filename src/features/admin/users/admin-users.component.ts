@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, OnInit, ChangeDetectionStrategy,
+  Component, inject, signal, computed, input, booleanAttribute, OnInit, ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
@@ -7,6 +7,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { ToggleComponent } from '../../../shared/components/toggle/toggle.component';
+import { headerClass } from '../../../shared/components/snap-panels/embedded-header';
 import { formatDate } from '../../../shared/utils/format';
 import { shareOrCopy } from '../../../shared/utils/share';
 import { isValidEmail } from '../../../shared/utils/validators';
@@ -19,13 +20,13 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
   imports: [FormsModule, TranslatePipe, AppIconComponent, SkeletonComponent, ToggleComponent],
   template: `
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div [class]="header()">
         <div>
-          <h1 class="text-xl font-bold text-neutral-100">{{ 'admin.users.title' | translate }}</h1>
+          <h1 class="text-xl font-bold text-neutral-100" [attr.aria-level]="embedded() ? 2 : null">{{ 'admin.users.title' | translate }}</h1>
           <p class="text-sm text-neutral-500 mt-0.5">{{ users().length }} total</p>
         </div>
         <button (click)="toggleInviteForm()"
-          class="inline-flex items-center gap-1.5 rounded-md bg-[hsl(var(--tenant-primary))] px-3 py-1.5 text-sm font-medium
+          class="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-[hsl(var(--tenant-primary))] px-3 py-1.5 text-sm font-medium
                  text-[hsl(var(--tenant-contrast))] hover:bg-[hsl(var(--tenant-hover))] transition-colors">
           <app-icon name="plus" />
           {{ 'admin.users.invite' | translate }}
@@ -97,25 +98,25 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
       } @else if (users().length === 0) {
         <p class="text-sm text-neutral-500">{{ 'admin.users.empty' | translate }}</p>
       } @else {
-        <div class="rounded-xl border border-neutral-800 overflow-hidden">
+        <div class="rounded-xl border border-neutral-800 overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-neutral-800 bg-neutral-900">
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Name</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden sm:table-cell">Email</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ 'admin.users.role' | translate }}</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden md:table-cell">Joined</th>
-                <th class="px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide text-right">Active</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Name</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden sm:table-cell">Email</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ 'admin.users.role' | translate }}</th>
+                <th class="text-left px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden md:table-cell">Joined</th>
+                <th class="px-3 sm:px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide text-right">Active</th>
               </tr>
             </thead>
             <tbody>
               @for (user of users(); track user.id) {
                 <tr class="border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30">
-                  <td class="px-4 py-3">
+                  <td class="px-3 sm:px-4 py-3">
                     <p class="font-medium text-neutral-100">{{ user.name }}</p>
                   </td>
-                  <td class="px-4 py-3 text-neutral-400 text-xs hidden sm:table-cell">{{ user.email }}</td>
-                  <td class="px-4 py-3">
+                  <td class="px-3 sm:px-4 py-3 text-neutral-400 text-xs hidden sm:table-cell">{{ user.email }}</td>
+                  <td class="px-3 sm:px-4 py-3">
                     <select
                       [name]="'role_' + user.id"
                       [ngModel]="user.role"
@@ -127,8 +128,8 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
                       <option value="admin">admin</option>
                     </select>
                   </td>
-                  <td class="px-4 py-3 text-neutral-500 text-xs hidden md:table-cell">{{ formatDate(user.created_at) }}</td>
-                  <td class="px-4 py-3 text-right">
+                  <td class="px-3 sm:px-4 py-3 text-neutral-500 text-xs hidden md:table-cell">{{ formatDate(user.created_at) }}</td>
+                  <td class="px-3 sm:px-4 py-3 text-right">
                     <app-toggle [active]="user.is_active" (changed)="toggleActive(user)" />
                   </td>
                 </tr>
@@ -146,6 +147,10 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
 })
 export class AdminUsersComponent implements OnInit {
   private readonly supabase = inject(SUPABASE_CLIENT);
+
+  /** Shown inside a SnapPanels panel: the header sticks to the top of the scrolling area. */
+  readonly embedded = input(false, { transform: booleanAttribute });
+  readonly header = computed(() => headerClass(this.embedded()));
 
   readonly loading = signal(true);
   readonly users = signal<Profile[]>([]);

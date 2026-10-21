@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, computed, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet, RouterLink } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { FriendshipService } from '../../../core/friendships/friendship.service';
@@ -14,14 +14,20 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { Language } from '../../../core/auth/auth.types';
 import { BottomTabBarComponent } from '../bottom-tab-bar/bottom-tab-bar.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
-import { isMoreActive, navItemsForRole } from './nav-items';
+import { isNavItemActive, navItemsForRole, type NavItem } from './nav-items';
 
+const NAV_LINK_BASE = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors';
+
+/**
+ * App layout. Below `lg` it is a top bar plus a bottom tab bar (language and sign-out live on the
+ * profile page there); from `lg` up it is a fixed sidebar.
+ */
 @Component({
   selector: 'app-shell',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterOutlet, RouterLink, RouterLinkActive, TenantBrandingComponent, CountdownTimerComponent,
+    RouterOutlet, RouterLink, TenantBrandingComponent, CountdownTimerComponent,
     TranslatePipe, AppIconComponent, BottomTabBarComponent, UserAvatarComponent,
   ],
   template: `
@@ -33,13 +39,8 @@ import { isMoreActive, navItemsForRole } from './nav-items';
         <app-user-avatar [name]="auth.profile()?.name ?? null" [showDot]="hasNotifications()" />
       </header>
 
-      <!-- Mobile backdrop -->
-      @if (drawerOpen()) {
-        <div class="lg:hidden fixed inset-0 z-[45] bg-black/60" (click)="closeDrawer()"></div>
-      }
-
-      <!-- Sidebar / Drawer -->
-      <aside [class]="sidebarClass()">
+      <!-- Desktop sidebar -->
+      <aside class="hidden lg:flex fixed inset-y-0 left-0 z-50 w-56 flex-col bg-neutral-900 border-r border-neutral-800">
         <div class="px-4 py-4 border-b border-neutral-800 flex-shrink-0">
           <app-tenant-branding />
           <p class="mt-1 text-xs text-neutral-500 truncate">{{ auth.profile()?.name }}</p>
@@ -47,13 +48,7 @@ import { isMoreActive, navItemsForRole } from './nav-items';
 
         <nav class="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
           @for (item of navItems(); track item.route) {
-            <a
-              [routerLink]="item.route"
-              routerLinkActive="bg-neutral-800 text-neutral-100"
-              [routerLinkActiveOptions]="{ exact: !!item.exact }"
-              (click)="closeDrawer()"
-              class="nav-link"
-            >
+            <a [routerLink]="item.route" [class]="navLinkClass(item)">
               <app-icon [name]="item.icon" iconClass="w-4 h-4 flex-shrink-0" />
               {{ item.labelKey | translate }}
             </a>
@@ -97,14 +92,9 @@ import { isMoreActive, navItemsForRole } from './nav-items';
       </div>
     </div>
 
-    <app-bottom-tab-bar [items]="tabItems()" [moreActive]="moreActive()" (more)="openDrawer()" />
+    <app-bottom-tab-bar [items]="navItems()" [currentUrl]="currentUrl()" />
     <app-countdown-timer />
   `,
-  styles: [`
-    .nav-link {
-      @apply flex items-center gap-2 px-3 py-2 rounded-md text-sm text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 transition-colors;
-    }
-  `],
 })
 export class AppShellComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
@@ -115,7 +105,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   private readonly restTimer = inject(CountdownTimerService);
 
   /** Current page, as a signal: router events are an async stream, converted at the boundary. */
-  private readonly currentUrl = toSignal(
+  readonly currentUrl = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
       map(event => event.urlAfterRedirects),
@@ -123,7 +113,6 @@ export class AppShellComponent implements OnInit, OnDestroy {
     { initialValue: this.router.url },
   );
 
-  readonly drawerOpen = signal(false);
   readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
   readonly isFreeOrAdmin = computed(() => {
     const role = this.auth.profile()?.role;
@@ -131,20 +120,11 @@ export class AppShellComponent implements OnInit, OnDestroy {
   });
 
   readonly navItems = computed(() => navItemsForRole(this.auth.profile()?.role));
-  readonly tabItems = computed(() => this.navItems().filter(item => item.inTabBar));
-  readonly moreActive = computed(() => isMoreActive(this.navItems(), this.currentUrl()));
 
   /** Pending friend requests (free/admin) or pending invite requests (admin) are waiting for an answer. */
   readonly hasNotifications = computed(
     () => this.friendships.pendingReceived().length > 0 || this.inviteRequests.pendingCount() > 0,
   );
-
-  readonly sidebarClass = computed(() => {
-    const base =
-      'fixed inset-y-0 left-0 z-50 w-56 bg-neutral-900 border-r border-neutral-800 flex flex-col transition-transform duration-200 lg:translate-x-0';
-    const mobileClass = this.drawerOpen() ? 'translate-x-0' : '-translate-x-full';
-    return `${base} ${mobileClass}`;
-  });
 
   ngOnInit(): void {
     if (this.isFreeOrAdmin()) void this.friendships.load();
@@ -156,6 +136,13 @@ export class AppShellComponent implements OnInit, OnDestroy {
     this.restTimer.cancel();
   }
 
+  navLinkClass(item: NavItem): string {
+    const state = isNavItemActive(item, this.currentUrl())
+      ? 'bg-neutral-800 text-neutral-100'
+      : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800';
+    return `${NAV_LINK_BASE} ${state}`;
+  }
+
   langBtnClass(lang: Language): string {
     const active = this.langService.activeLanguage() === lang;
     return active
@@ -163,7 +150,5 @@ export class AppShellComponent implements OnInit, OnDestroy {
       : 'text-xs text-neutral-500 hover:text-neutral-300 transition-colors';
   }
 
-  openDrawer(): void { this.drawerOpen.set(true); }
-  closeDrawer(): void { this.drawerOpen.set(false); }
   setLanguage(lang: Language): void { this.langService.setLanguage(lang); }
 }

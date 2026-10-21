@@ -93,26 +93,18 @@ export const routes: Routes = [
       {
         path: 'admin',
         canActivate: [roleGuard(['admin'])],
-        loadComponent: () =>
-          import('../features/admin/admin-shell/admin-shell.component').then(
-            m => m.AdminShellComponent,
-          ),
         children: [
-          { path: '', redirectTo: 'requests', pathMatch: 'full' },
           {
-            path: 'requests',
+            path: '',
+            pathMatch: 'full',
             loadComponent: () =>
-              import(
-                '../features/admin/invite-requests/admin-invite-requests.component'
-              ).then(m => m.AdminInviteRequestsComponent),
-          },
-          {
-            path: 'users',
-            loadComponent: () =>
-              import('../features/admin/users/admin-users.component').then(
-                m => m.AdminUsersComponent,
+              import('../features/admin/admin-page/admin-page.component').then(
+                m => m.AdminPageComponent,
               ),
           },
+          // Requests and users now share the admin page; keep the old URLs working.
+          { path: 'requests', pathMatch: 'full', redirectTo: '' },
+          { path: 'users', pathMatch: 'full', redirectTo: '' },
         ],
       },
       {
@@ -123,14 +115,17 @@ export const routes: Routes = [
             m => m.MyPlanShellComponent,
           ),
         children: [
-          { path: '', redirectTo: 'planning', pathMatch: 'full' },
           {
-            path: 'planning',
+            path: '',
+            pathMatch: 'full',
             loadComponent: () =>
-              import('../features/free/my-planning-list/my-planning-list.component').then(
-                m => m.MyPlanningListComponent,
+              import('../features/free/my-library/my-library-page.component').then(
+                m => m.MyLibraryPageComponent,
               ),
           },
+          // Plans and exercises now share one page; keep the old URLs (and the forms' "back") working.
+          { path: 'planning', pathMatch: 'full', redirectTo: '' },
+          { path: 'exercises', pathMatch: 'full', redirectTo: '' },
           {
             path: 'planning/new',
             loadComponent: () =>
@@ -144,14 +139,6 @@ export const routes: Routes = [
               import(
                 '../features/trainer/planning/planning-form/planning-form.component'
               ).then(m => m.PlanningFormComponent),
-          },
-          {
-            path: 'exercises',
-            data: { titleKey: 'myplan.exercises.title', newRoute: '/my-plan/exercises/new' },
-            loadComponent: () =>
-              import(
-                '../features/trainer/exercises/exercise-list/exercise-list.component'
-              ).then(m => m.ExerciseListComponent),
           },
           {
             path: 'exercises/new',

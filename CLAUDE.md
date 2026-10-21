@@ -335,11 +335,11 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Route | Role |
 |------|-------|------|
 | `auth/login/login.component.ts` | `/login` | public |
-| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated — desktop sidebar + mobile top bar, bottom tab bar and "More" drawer, all driven by `navItemsForRole()`; `hasNotifications` (pending friend/invite requests) feeds the avatar dot |
-| `shell/app-shell/nav-items.ts` | *(pure)* | `navItemsForRole(role)`: the role's pages in sidebar order; `inTabBar` marks the ≤4 that become bottom tabs, the rest live behind "More". `isMoreActive(items, url)`: true on a page that only lives behind "More", so that button is lit |
-| `shell/bottom-tab-bar/bottom-tab-bar.component.ts` | *(shell, below `lg` only)* | all authenticated — role tabs + "More" (input `moreActive`; emits `more`, which opens the drawer: language, sign out, remaining pages) |
+| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated — below `lg`: mobile top bar + bottom tab bar (no side drawer; language and sign-out live on `/profile`); from `lg`: fixed sidebar (keeps its own language toggle and sign-out). Both nav surfaces are driven by `navItemsForRole()`; `hasNotifications` (pending friend/invite requests) feeds the avatar dot. Cancels the rest timer when destroyed (sign-out) |
+| `shell/app-shell/nav-items.ts` | *(pure)* | `navItemsForRole(role)`: the role's pages in order (at most `MAX_NAV_ITEMS` = 5, so the tab bar shows them all and needs no overflow menu). `isNavItemActive(item, url)`: whether a page belongs to an item, via `exact` or `activeFor` prefixes (so `/my-plan/planning/new` lights up the `/my-plan` library item) |
+| `shell/bottom-tab-bar/bottom-tab-bar.component.ts` | *(shell, below `lg` only)* | all authenticated — one tab per nav item (inputs `items`, `currentUrl`) |
 | `shell/user-avatar/user-avatar.component.ts` | *(shell, mobile top bar)* | all authenticated — initials on the tenant colour, links to `/profile`, optional alert dot |
-| `profile/profile-page/profile-page.component.ts` | `/profile` | all |
+| `profile/profile-page/profile-page.component.ts` | `/profile` | all — identity, push toggle, friend invites (free/admin), branding (trainer), plus the **Language** and **Session** (sign-out) sections that replace the old mobile drawer |
 | `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin — owns all state; exactly one exercise card is open (`openId` = hand-picked `manualOpenId` ?? first unfinished exercise). `completeSet(i)` finishes the current round, starts the exercise's rest timer between rounds and moves on after the last one; `undoRound(i, r)` reopens a round; saving writes `is_completed` per round |
 | `client/workout-dashboard/components/workout-summary.component.ts` | *(sub-component)* | progress card: plan, "Day N of M", completion bar, session volume and duration |
 | `client/workout-dashboard/components/exercise-card.component.ts` | *(sub-component)* | open (inputs + "Complete round k/n", with the rest time) or collapsed (done / "2/4 rounds" / pending) row; emits `expand`, `inputChange`, `completeSet`, `undoRound(index)`, `timerStart` |
@@ -347,7 +347,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `client/workout-dashboard/components/suggestion-chip.component.ts` | *(sub-component)* | brain-icon suggested-weight hint; self-contained, remove it with its single usage in the exercise card |
 | `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
 | `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
-| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer |
+| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer — also embedded (`embedded` input, `titleKey` / `newRoute` inputs) as the exercises panel of `/my-plan` |
 | `trainer/exercises/exercise-form/exercise-form.component.ts` | `/trainer/exercises/new` | trainer |
 | `trainer/exercises/exercise-edit-sheet/exercise-edit-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `trainer/exercises/muscle-tag-matrix/muscle-tag-matrix.component.ts` | *(sub-component)* | trainer |
@@ -356,12 +356,12 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `auth/register/register.component.ts` | `/register` | public (invite link) |
-| `admin/admin-shell/admin-shell.component.ts` | `/admin` (bare router-outlet) | admin |
-| `admin/invite-requests/admin-invite-requests.component.ts` | `/admin/requests` | admin |
-| `admin/users/admin-users.component.ts` | `/admin/users` | admin |
+| `admin/admin-page/admin-page.component.ts` | `/admin` (`/admin/requests` and `/admin/users` redirect here) | admin — invite requests and users on one page, as two snap panels |
+| `admin/invite-requests/admin-invite-requests.component.ts` | *(panel of `/admin`)* | admin — `embedded` input makes its header sticky inside the panel |
+| `admin/users/admin-users.component.ts` | *(panel of `/admin`)* | admin — `embedded` input, as above |
 | `free/my-plan-shell/my-plan-shell.component.ts` | `/my-plan` (bare router-outlet) | free · admin |
-| `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only) |
-| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/my-plan/exercises` | free · admin — same component as trainer route; receives `titleKey='myplan.exercises.title'` and `newRoute='/my-plan/exercises/new'` via route `data` (bound via `withComponentInputBinding`) |
+| `free/my-library/my-library-page.component.ts` | `/my-plan` (`/my-plan/planning` and `/my-plan/exercises` redirect here) | free · admin — plans and exercises on one page, as two snap panels. The plan and exercise forms (`/my-plan/planning/new`, `/my-plan/planning/:id`, `/my-plan/exercises/new`) stay separate routes and their "back" lands on this page |
+| `free/my-planning-list/my-planning-list.component.ts` | *(panel of `/my-plan`)* | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only); `embedded` input as above |
 | `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
 | `profile/push-toggle/push-toggle.component.ts` | *(embedded in `/profile`)* | all — enables/disables push notifications via `PushNotificationService` |
 
@@ -377,6 +377,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `HlmSheetComponent` | `shared/ui/sheet/` | component — slide panel (right or bottom side) |
 | `TranslatePipe` | `shared/pipes/translate.pipe.ts` | impure pipe — `\| translate` resolves key via `LanguageService` |
 | `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name (reads from `auth.tenant()`) |
+| `SnapPanelsComponent` | `shared/components/snap-panels/` | component — two stacked panels that fill the page height and each scroll inside themselves; a three-way switch snaps between both at half height (default), the first full, or the second full. Project content with `first` / `second` attributes; inputs `firstLabel`, `secondLabel`; two-way `layout`. A hidden panel stays mounted (state survives) but is `inert`. Layout logic is pure (`snap-panels.layout.ts`) |
+| `headerClass(embedded, pageClass?)` | `shared/components/snap-panels/embedded-header.ts` | helper — a page component's header classes: normal when standalone, sticky-inside-the-panel when `embedded` |
 | `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast, both with a `+30s` button; mounted once in AppShell; driven by `CountdownTimerService` signals |
 | `AppIconComponent` | `shared/ui/icons/` | component — `<app-icon name="…" iconClass="…" />`. Icons are Phosphor Regular, one `svg/<name>.ts` module each, registered in `icons.registry.ts` (the header there explains how to add one). **Gotcha:** `styles.css` has a global `svg { fill }` rule that beats the `fill="currentColor"` attribute, so add `fill-current` to `iconClass` when the icon should follow the text colour |
 | `StepperComponent` | `shared/components/stepper/` | component — value on top, two 48px −/+ buttons below (never clips on narrow screens); the value is a real number input. Inputs: `value`, `label`, `step`, `min`, `placeholder`, `disabled`. Output: `valueChange` (`number \| null`) |

@@ -20,10 +20,8 @@ export const dictionary = {
   'tab.plans':            { en: 'Plans',             es: 'Planes' },
   'tab.clients':          { en: 'Clients',           es: 'Clientes' },
   'tab.friends':          { en: 'Friends',           es: 'Amigos' },
-  'tab.requests':         { en: 'Requests',          es: 'Solicitudes' },
-  'tab.users':            { en: 'Users',             es: 'Usuarios' },
+  'tab.admin':            { en: 'Admin',             es: 'Admin' },
   'tab.profile':          { en: 'Profile',           es: 'Perfil' },
-  'tab.more':             { en: 'More',              es: 'Más' },
 
   // Common actions
   'common.loading':       { en: 'Loading…',          es: 'Cargando…' },
@@ -51,6 +49,7 @@ export const dictionary = {
   // Planning
   'planning.title':          { en: 'Training Plans',                                       es: 'Planes de Entrenamiento' },
   'planning.new':            { en: '+ New Plan',                                           es: '+ Nuevo Plan' },
+  'planning.subtitle':       { en: 'plans',                                                es: 'planes' },
   'planning.empty':          { en: 'No training plans yet.',                               es: 'Aún no hay planes de entrenamiento.' },
   'planning.empty.hint':     { en: 'Create your first plan to assign to clients.',        es: 'Crea tu primer plan para asignar a clientes.' },
   'planning.autorm':         { en: 'Auto 1RM enabled',                                    es: '1RM automático activado' },
@@ -117,6 +116,10 @@ export const dictionary = {
   'dashboard.suggested.plan': { en: 'From your plan',        es: 'De tu plan' },
   'dashboard.timer.start':   { en: 'Start rest timer',       es: 'Iniciar descanso' },
 
+  // Snap panels (two stacked, scrollable panels)
+  'panels.both':             { en: 'Both',                   es: 'Ambos' },
+  'panels.view':             { en: 'Panel layout',           es: 'Distribución de paneles' },
+
   // Rest timer
   'timer.rest':              { en: 'Rest',                   es: 'Descanso' },
   'timer.hint':              { en: 'Tap outside to minimise', es: 'Toca fuera para minimizar' },
@@ -136,8 +139,7 @@ export const dictionary = {
   'profile.signout.hint':    { en: 'You will need to sign in again to use the app.', es: 'Tendrás que iniciar sesión de nuevo para usar la app.' },
 
   // Admin portal
-  'nav.admin.requests':            { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
-  'nav.admin.users':               { en: 'Users',                                  es: 'Usuarios' },
+  'admin.requests.short':          { en: 'Requests',                               es: 'Solicitudes' },
   'admin.requests.title':          { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
   'admin.requests.empty':          { en: 'No requests yet.',                       es: 'Aún no hay solicitudes.' },
   'admin.requests.approve':        { en: 'Approve & Invite',                       es: 'Aprobar e Invitar' },
@@ -165,8 +167,8 @@ export const dictionary = {
 
   // My Plan (free/admin self-service)
   'nav.myplan':                    { en: 'My Plan',                            es: 'Mi Plan' },
-  'nav.myplan.planning':           { en: 'My Plans',                           es: 'Mis Planes' },
-  'nav.myplan.exercises':          { en: 'My Exercises',                       es: 'Mis Ejercicios' },
+  'nav.myplan.library':            { en: 'Plans & Exercises',                  es: 'Planes y Ejercicios' },
+  'nav.admin.panel':               { en: 'Requests & Users',                   es: 'Solicitudes y Usuarios' },
   'nav.myplan.friends':            { en: 'Friends',                            es: 'Amigos' },
   'myplan.planning.title':         { en: 'My Plans',                           es: 'Mis Planes' },
   'myplan.planning.empty.hint':    { en: 'Create your first plan to get started.', es: 'Crea tu primer plan para comenzar.' },
