@@ -132,6 +132,8 @@ export const dictionary = {
   'profile.since':           { en: 'Member since',          es: 'Miembro desde' },
   'profile.gym':             { en: 'Gym / Trainer',         es: 'Gimnasio / Entrenador' },
   'profile.language':        { en: 'Language',              es: 'Idioma' },
+  'profile.session':         { en: 'Session',               es: 'Sesión' },
+  'profile.signout.hint':    { en: 'You will need to sign in again to use the app.', es: 'Tendrás que iniciar sesión de nuevo para usar la app.' },
 
   // Admin portal
   'nav.admin.requests':            { en: 'Invite Requests',                        es: 'Solicitudes de Invitación' },
