@@ -17,6 +17,7 @@ import type {
 import {
   completedCount, dayPosition, firstIncompleteId, initialInputs, progressPercent, sessionVolume,
 } from '../../../core/workout/workout-stats';
+import { SessionClock } from '../../../core/workout/session-clock';
 import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
 import { WorkoutSummaryComponent } from './components/workout-summary.component';
 
@@ -27,6 +28,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, TranslatePipe, AppIconComponent, ExerciseCardComponent, WorkoutSummaryComponent],
+  providers: [SessionClock],
   template: `
     <div class="max-w-lg mx-auto">
 
@@ -105,6 +107,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
             [total]="rows().length"
             [percent]="progress()"
             [volume]="volume()"
+            [durationSeconds]="clock.elapsedSeconds()"
           />
 
           @for (row of rows(); track row.prescribed.id; let i = $index) {
@@ -186,6 +189,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   private readonly injector = inject(Injector);
   readonly router = inject(Router);
   readonly timerService = inject(CountdownTimerService);
+  readonly clock = inject(SessionClock);
 
   readonly loading = signal(true);
   readonly plan = signal<WorkoutPlanFull | null>(null);
@@ -250,6 +254,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     field: RoundInputField,
     value: number | null,
   ): void {
+    this.clock.start();
     this.rows.update(rows => {
       const updated = [...rows];
       const row = { ...updated[rowIndex] };
@@ -262,6 +267,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   }
 
   toggleComplete(rowIndex: number): void {
+    this.clock.start();
     this.rows.update(rows => {
       const updated = [...rows];
       updated[rowIndex] = { ...updated[rowIndex], isCompleted: !updated[rowIndex].isCompleted };
@@ -280,6 +286,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   }
 
   startTimer(restMinutes: number): void {
+    this.clock.start();
     this.timerService.start(Math.round(restMinutes * 60));
   }
 
@@ -391,6 +398,7 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.rows.set([]);
     this.manualOpenId.set(null);
+    this.clock.reset();
 
     const planId = this.assignedPlanId();
     const profile = this.auth.profile();
