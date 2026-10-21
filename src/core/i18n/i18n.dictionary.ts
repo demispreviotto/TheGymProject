@@ -87,6 +87,15 @@ export const dictionary = {
   'dashboard.connect.err.notfound': { en: 'Plan not found or sharing is disabled.', es: 'Plan no encontrado o sin compartición activa.' },
   'dashboard.session.finish': { en: 'Finish Workout', es: 'Finalizar Entrenamiento' },
 
+  'dashboard.of':            { en: 'of',                     es: 'de' },
+  'dashboard.progress':      { en: 'Progress',               es: 'Progreso' },
+  'dashboard.progress.done': { en: 'completed',              es: 'completados' },
+  'dashboard.volume':        { en: 'Volume',                 es: 'Volumen' },
+  'dashboard.target':        { en: 'Target',                 es: 'Objetivo' },
+  'dashboard.allrounds':     { en: 'same for every round',   es: 'igual en todas las series' },
+  'dashboard.suggested.auto': { en: 'Based on your last session', es: 'Según tu última sesión' },
+  'dashboard.suggested.plan': { en: 'From your plan',        es: 'De tu plan' },
+  'dashboard.timer.start':   { en: 'Start rest timer',       es: 'Iniciar descanso' },
 
   // Rest timer
   'timer.rest':              { en: 'Rest',                   es: 'Descanso' },
