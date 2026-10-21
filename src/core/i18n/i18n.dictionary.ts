@@ -163,7 +163,7 @@ export const dictionary = {
   'invite.friends.status.pending':  { en: 'Pending',                              es: 'Pendiente' },
   'invite.friends.status.approved': { en: 'Approved',                             es: 'Aprobado' },
   'invite.friends.status.rejected': { en: 'Rejected',                             es: 'Rechazado' },
-  'invite.friends.limit':          { en: 'You have used all your invite slots.',   es: 'Has utilizado todos tus cupos de invitación.' },
+  'invite.friends.limit':          { en: 'You have used all your invite slots. A rejected request frees its slot.',   es: 'Has utilizado todos tus cupos de invitación. Una solicitud rechazada libera su cupo.' },
 
   // My Plan (free/admin self-service)
   'nav.myplan':                    { en: 'My Plan',                            es: 'Mi Plan' },
