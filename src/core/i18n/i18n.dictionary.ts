@@ -87,6 +87,14 @@ export const dictionary = {
   'dashboard.connect.err.notfound': { en: 'Plan not found or sharing is disabled.', es: 'Plan no encontrado o sin compartición activa.' },
   'dashboard.session.finish': { en: 'Finish Workout', es: 'Finalizar Entrenamiento' },
 
+
+  // Rest timer
+  'timer.rest':              { en: 'Rest',                   es: 'Descanso' },
+  'timer.hint':              { en: 'Tap outside to minimise', es: 'Toca fuera para minimizar' },
+  'timer.expand':            { en: 'Tap to expand',          es: 'Toca para expandir' },
+  'timer.extend.aria':       { en: 'Add time',               es: 'Añadir tiempo' },
+  'timer.cancel.aria':       { en: 'Cancel timer',           es: 'Cancelar temporizador' },
+
   // Profile
   'profile.title':           { en: 'Profile',               es: 'Perfil' },
   'profile.name':            { en: 'Name',                  es: 'Nombre' },
