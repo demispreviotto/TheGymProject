@@ -16,16 +16,22 @@ const tenantRow = { id: 't1', primary_hex: '#112233' } as Tenant;
 
 describe('AuthService', () => {
   let service: AuthService;
-  let router: { url: string; navigate: Mock };
+  let router: { url: string; navigate: Mock; currentNavigation: Mock; serializeUrl: Mock };
   let theme: Mocked<ThemeService>;
   let lang: Mocked<LanguageService>;
   let profiles: QueryMock;
   let listener: AuthListener;
   let auth: Record<string, Mock>;
 
-  const setup = (row: unknown, url = '/login') => {
+  // `pendingUrl` simulates a navigation still held back by the auth guards.
+  const setup = (row: unknown, url = '/login', pendingUrl: string | null = null) => {
     profiles = createQueryMock({ data: row });
-    router = { url, navigate: vi.fn() };
+    router = {
+      url,
+      navigate: vi.fn(),
+      currentNavigation: vi.fn(() => (pendingUrl === null ? null : { extractedUrl: pendingUrl })),
+      serializeUrl: vi.fn((tree: string) => tree),
+    };
     theme = { applyFromTenant: vi.fn() } as unknown as Mocked<ThemeService>;
     lang = { initFromProfile: vi.fn(), t: vi.fn((key: string) => `t:${key}`) } as unknown as Mocked<LanguageService>;
     auth = {
@@ -96,6 +102,38 @@ describe('AuthService', () => {
       await service.refreshProfile();
       expect(router.navigate).not.toHaveBeenCalled();
     });
+
+    it('ignores the query string when checking for /login', async () => {
+      setup({ ...profileRow('admin'), tenant: null }, '/login?x=1');
+      await service.refreshProfile();
+      expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/admin']);
+    });
+
+    describe('session restore with a pending navigation', () => {
+      it('keeps the deep link instead of redirecting to the role home', async () => {
+        // Hard reload: router.url is still '/' while the guards wait for the profile.
+        setup({ ...profileRow('admin'), tenant: null }, '/', '/my-plan/friends');
+        service.initialize();
+        listener('SIGNED_IN', { user: { id: 'u1' } });
+        await vi.waitFor(() => expect(service.isLoading()).toBe(false));
+        expect(router.navigate).not.toHaveBeenCalled();
+      });
+
+      it('keeps a deep link for every role', async () => {
+        for (const role of ['admin', 'trainer', 'user', 'free'] as const) {
+          TestBed.resetTestingModule();
+          setup({ ...profileRow(role), tenant: null }, '/', '/my-plan/planning?tab=1');
+          await service.refreshProfile();
+          expect(router.navigate).not.toHaveBeenCalled();
+        }
+      });
+
+      it('still redirects when the pending navigation targets /login or the root', async () => {
+        setup({ ...profileRow('trainer'), tenant: null }, '/', '/login');
+        await service.refreshProfile();
+        expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/trainer']);
+      });
+    });
   });
 
   describe('initialize', () => {
@@ -129,6 +167,16 @@ describe('AuthService', () => {
       expect(service.profile()).toBeNull();
       expect(service.tenant()).toBeNull();
       expect(service.isLoading()).toBe(false);
+    });
+  });
+
+  describe('sign-in from the login page', () => {
+    it('redirects by role once SIGNED_IN loads the profile', async () => {
+      setup({ ...profileRow('admin'), tenant: null }, '/login');
+      service.initialize();
+      expect(await service.signIn('a@b.c', 'pw')).toBeNull();
+      listener('SIGNED_IN', { user: { id: 'u1' } });
+      await vi.waitFor(() => expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/admin']));
     });
   });
 
