@@ -18,7 +18,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 | 6 — Multi-Tenant Onboarding, Protocols & Localization | ✅ Done | LanguageService + translate pipe (EN/ES), tenants table + TenantService, editable trainer branding, protocol link sharing |
 | 7 — Invitation & Access Control | ✅ Done | RegisterComponent, trainer invites, admin portal, free-user invite requests, `invite_requests` table, `admin` role |
 | 8 — Free User Self-Service Planning + Friend Sharing | ✅ Done | Free/admin/trainer create own exercises & plans, friend request system, `is_shared_with_friends`, `/my-plan/*` routes; shared plans viewable read-only by friends; `/dashboard` open to all roles |
-| 8.1 — Rest Timer Component | ✅ Done | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; screen wake lock while running; `ngOnDestroy` cleanup |
+| 8.1 — Rest Timer Component | ✅ Done | `CountdownTimerService` singleton + `CountdownTimerComponent` (fullscreen ↔ toast); timer button per exercise card; blinking last 5 s; auto-dismiss on zero; screen wake lock while running; keeps running across page changes (the toast stays visible) and is cancelled only when the shell is destroyed, i.e. on sign-out |
 | PWA + Push | ✅ Done | Installable manifest, service worker (`ngsw-config.json`), update prompt, offline banner, iOS splash screens, Web Push for friend requests and invite decisions |
 | Tests | ✅ Done | Vitest (via Angular's `@angular/build:unit-test` builder, jsdom): `pnpm test` (watch) · `pnpm test:ci` (single run). Use `vi.fn()` and `vi.useFakeTimers()` — zone.js `fakeAsync` does not work under Vitest. Specs live next to the code as `*.spec.ts`; shared Supabase mock in `src/testing/supabase-mock.ts` |
 
@@ -320,8 +320,13 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |
 | `tenant/tenant.service.ts` | `tenant` computed from `AuthService`; `update(patch)` — DB write + live theme propagation |
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
+| `workout/workout-row.types.ts` | `WorkoutRowState` (one exercise of the active day: `inputs` + `roundsDone[]`, one flag per round; the exercise is completed when every round is done), `RoundInput`, `InputChange` |
+| `workout/workout-stats.ts` | Pure dashboard helpers. Rows: `createRow` (inputs pre-filled with the suggested weight and target reps, so what is shown is what is saved), `initialInputs`, `roundCount`. Rounds: `isRowCompleted`, `completedRounds`, `currentRound`, `lastDoneRound`, `withRoundDone`. Totals: `completedCount`, `progressPercent`, `completedVolume` / `sessionVolume` (rounds done so far), `dayPosition` (index in the sorted day list, not the day number), `firstIncompleteId`, `topWeight`, `suggestionSource` |
+| `workout/session-clock.ts` | `SessionClock`: elapsed workout time (`elapsedSeconds`, `startedAt`), started by the first user action (`start(from?)` can resume from a saved start), derived from the wall clock. Provided per dashboard (`providers: [SessionClock]`), not a root singleton; its interval is cleared on destroy |
+| `workout/workout-draft.ts` | Pure draft logic for the workout in progress: `draftKey(user, plan, day)`, `toDraft`, `applyDraft` (overlays saved inputs/rounds only when the shape still matches the loaded plan), `parseDraft` (validates untrusted storage), `isDraftStale` (12 h) |
+| `workout/workout-draft.service.ts` | `WorkoutDraftService` (root): `load` / `save` / `clear` / `pruneStale` over localStorage; every call is safe when storage is blocked or full. The dashboard saves after every change (`updateRow`), restores in `loadWorkout` and clears the draft once the session is saved, so progress survives leaving the page, a reload or closing the app |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
-| `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
+| `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `extend(seconds)` (the +30s button), `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
 | `push/push-notification.service.ts` | `isSupported`, `isSubscribed` signals; `enable()` requests a `SwPush` subscription (VAPID key in `push/push.config.ts`) and upserts it into `push_subscriptions` |
 | `pwa/pwa-update.service.ts` | `updateReady` signal (service-worker `VERSION_READY`); `applyUpdate()` activates the new version and reloads |
 | `network/network-status.service.ts` | `online` signal from `window` online/offline events |
@@ -330,26 +335,34 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Route | Role |
 |------|-------|------|
 | `auth/login/login.component.ts` | `/login` | public |
-| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated |
-| `profile/profile-page/profile-page.component.ts` | `/profile` | all |
-| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin |
+| `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated — below `lg`: mobile top bar (tenant + the avatar that opens `/profile`) and a bottom tab bar of the role's pages, shown only when there are at least `MIN_TABS_FOR_BAR` = 2 (a client has just the workout, so no bar); no side drawer, language and sign-out live on `/profile`. From `lg`: fixed sidebar = pages + Profile, with its own language toggle and sign-out. `hasNotifications` (pending friend/invite requests) feeds the avatar dot. The bar is a floating card (rounded, inset from the screen edges, no borders). Sets the `--tabbar-h` CSS variable (4.75rem = bar height + margin, or 0px without the bar) on its host: page padding, `SnapPanelsComponent` height and the rest-timer toast all offset by it. Cancels the rest timer when destroyed (sign-out) |
+| `shell/app-shell/nav-items.ts` | *(pure)* | `navItemsForRole(role)`: the role's pages, **without Profile** (at most `MAX_NAV_ITEMS` = 5; one tab each). `sidebarItemsForRole(role)`: those pages + `PROFILE_NAV_ITEM`, for the desktop sidebar that has no avatar. `showsTabBar(items)`. `isNavItemActive(item, url)`: whether a page belongs to an item, via `exact` or `activeFor` prefixes (so `/my-plan/planning/new` lights up the `/my-plan` library item) |
+| `shell/bottom-tab-bar/bottom-tab-bar.component.ts` | *(shell, below `lg` only)* | all authenticated except clients — one tab per page (inputs `items`, `currentUrl`); no Profile tab |
+| `shell/user-avatar/user-avatar.component.ts` | *(shell, mobile top bar)* | all authenticated — the Phosphor `user` icon on the tenant colour, links to `/profile` (ringed with `aria-current` while it is open, via input `active`), optional alert dot |
+| `profile/profile-page/profile-page.component.ts` | `/profile` | all — identity, push toggle, friend invites (free/admin), branding (trainer), plus the **Language** and **Session** (sign-out) sections that replace the old mobile drawer |
+| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin — owns all state; exactly one exercise card is open (`openId` = hand-picked `manualOpenId` ?? first unfinished exercise). `completeSet(i)` finishes the current round, starts the exercise's rest timer between rounds and moves on after the last one; `undoRound(i, r)` reopens a round; saving writes `is_completed` per round |
+| `client/workout-dashboard/components/workout-summary.component.ts` | *(sub-component)* | progress card: plan, "Day N of M", completion bar, session volume and duration |
+| `client/workout-dashboard/components/exercise-card.component.ts` | *(sub-component)* | open (inputs + "Complete round k/n", with the rest time) or collapsed (done / "2/4 rounds" / pending) row; emits `expand`, `inputChange`, `completeSet`, `undoRound(index)`, `timerStart` |
+| `client/workout-dashboard/components/set-inputs.component.ts` | *(sub-component)* | weight/reps steppers: standard mode = one shared pair with a progress dot per round; granular/failure = one block per round that locks when done and reopens via its check chip |
+| `client/workout-dashboard/components/suggestion-chip.component.ts` | *(sub-component)* | brain-icon suggested-weight hint; self-contained, remove it with its single usage in the exercise card |
 | `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
 | `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
-| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/trainer/exercises` | trainer |
+| `trainer/library/trainer-library-page.component.ts` | `/trainer` (`/trainer/exercises` and `/trainer/planning` redirect here) | trainer — plans and exercises on one page, switched between one at a time (snap panels with `allowSplit` off, Training Plans by default). The forms (`/trainer/exercises/new`, `/trainer/planning/new`, `/trainer/planning/:id`) stay separate routes and their "back" lands on this page |
+| `trainer/exercises/exercise-list/exercise-list.component.ts` | *(panel of `/trainer` and of `/my-plan`)* | trainer · free · admin — `embedded` input makes its header sticky inside a panel; `titleKey` / `newRoute` inputs (defaults are the trainer's; `/my-plan` passes its own) |
 | `trainer/exercises/exercise-form/exercise-form.component.ts` | `/trainer/exercises/new` | trainer |
 | `trainer/exercises/exercise-edit-sheet/exercise-edit-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `trainer/exercises/muscle-tag-matrix/muscle-tag-matrix.component.ts` | *(sub-component)* | trainer |
-| `trainer/planning/planning-list/planning-list.component.ts` | `/trainer/planning` | trainer |
+| `trainer/planning/planning-list/planning-list.component.ts` | *(panel of `/trainer`)* | trainer — plan list with gym sharing and ID copy; `embedded` input as above |
 | `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` · `/my-plan/planning/new` · `/my-plan/planning/:id` | trainer · free · admin — supports read-only view mode for non-owned plans (`isReadOnly` signal gated by `tenant_id !== auth.uid()`) |
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
 | `auth/register/register.component.ts` | `/register` | public (invite link) |
-| `admin/admin-shell/admin-shell.component.ts` | `/admin` (bare router-outlet) | admin |
-| `admin/invite-requests/admin-invite-requests.component.ts` | `/admin/requests` | admin |
-| `admin/users/admin-users.component.ts` | `/admin/users` | admin |
+| `admin/admin-page/admin-page.component.ts` | `/admin` (`/admin/requests` and `/admin/users` redirect here) | admin — invite requests and users on one page, as two snap panels |
+| `admin/invite-requests/admin-invite-requests.component.ts` | *(panel of `/admin`)* | admin — `embedded` input makes its header sticky inside the panel |
+| `admin/users/admin-users.component.ts` | *(panel of `/admin`)* | admin — `embedded` input, as above |
 | `free/my-plan-shell/my-plan-shell.component.ts` | `/my-plan` (bare router-outlet) | free · admin |
-| `free/my-planning-list/my-planning-list.component.ts` | `/my-plan/planning` | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only) |
-| `trainer/exercises/exercise-list/exercise-list.component.ts` | `/my-plan/exercises` | free · admin — same component as trainer route; receives `titleKey='myplan.exercises.title'` and `newRoute='/my-plan/exercises/new'` via route `data` (bound via `withComponentInputBinding`) |
+| `free/my-library/my-library-page.component.ts` | `/my-plan` (`/my-plan/planning` and `/my-plan/exercises` redirect here) | free · admin — plans and exercises on one page, switched between one at a time (snap panels with `allowSplit` off: a two-option switch, My Plans by default, no "Both" view). The plan and exercise forms (`/my-plan/planning/new`, `/my-plan/planning/:id`, `/my-plan/exercises/new`) stay separate routes and their "back" lands on this page |
+| `free/my-planning-list/my-planning-list.component.ts` | *(panel of `/my-plan`)* | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only); `embedded` input as above |
 | `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
 | `profile/push-toggle/push-toggle.component.ts` | *(embedded in `/profile`)* | all — enables/disables push notifications via `PushNotificationService` |
 
@@ -365,7 +378,13 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `HlmSheetComponent` | `shared/ui/sheet/` | component — slide panel (right or bottom side) |
 | `TranslatePipe` | `shared/pipes/translate.pipe.ts` | impure pipe — `\| translate` resolves key via `LanguageService` |
 | `TenantBrandingComponent` | `shared/components/tenant-branding/` | component — SVG logo + tenant name (reads from `auth.tenant()`) |
-| `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast; mounted once in AppShell; driven by `CountdownTimerService` signals |
+| `SnapPanelsComponent` | `shared/components/snap-panels/` | component — two stacked panels that fill the page height and each scroll inside themselves; a three-way switch snaps between both at half height (default), the first full, or the second full. Project content with `first` / `second` attributes; inputs `firstLabel`, `secondLabel`, `allowSplit` (default true; false = a plain two-option switch that always shows one panel); two-way `layout`. A hidden panel stays mounted (state survives) but is `inert`. Its height is the viewport minus the top bar, page padding, the shell's `--tabbar-h` and the safe area. Layout logic is pure (`snap-panels.layout.ts`) |
+| `headerClass(embedded, pageClass?)` | `shared/components/snap-panels/embedded-header.ts` | helper — a page component's header classes: normal when standalone, sticky-inside-the-panel when `embedded` |
+| `CountdownTimerComponent` | `shared/components/countdown-timer/` | component — fullscreen overlay ↔ bottom toast, both with a `+30s` button; mounted once in AppShell; driven by `CountdownTimerService` signals |
+| `AppIconComponent` | `shared/ui/icons/` | component — `<app-icon name="…" iconClass="…" />`. Icons are Phosphor Regular, one `svg/<name>.ts` module each, registered in `icons.registry.ts` (the header there explains how to add one). **Gotcha:** `styles.css` has a global `svg { fill }` rule that beats the `fill="currentColor"` attribute, so add `fill-current` to `iconClass` when the icon should follow the text colour |
+| `StepperComponent` | `shared/components/stepper/` | component — value on top, two 48px −/+ buttons below (never clips on narrow screens); the value is a real number input. Inputs: `value`, `label`, `step`, `min`, `placeholder`, `disabled`. Output: `valueChange` (`number \| null`) |
+| `ExigenceBadgeComponent` | `shared/components/exigence-badge/` | component — A–D pill. Input: `level` |
+| `MuscleChipsComponent` | `shared/components/muscle-chips/` | component — muscle tags, primary first (tenant tint), wraps on narrow screens. Input: `muscles` |
 | `EmptyStateComponent` | `shared/components/empty-state/` | component — centered empty placeholder. Inputs: `message` (string, required), `hint` (string, optional). Use whenever a list or section has no items. |
 | `SkeletonComponent` | `shared/components/skeleton/` | component — animated loading pulse rows. Inputs: `count` (number, default `3`), `itemClass` (string, default `'h-14'`). Use instead of inline `@for` animate-pulse blocks. |
 | `ToggleComponent` | `shared/components/toggle/` | component — accessible boolean switch styled with tenant primary color. Inputs: `active` (boolean, required). Output: `changed` (boolean). Replaces inline `role="switch"` buttons with class-mapping methods. |
@@ -380,6 +399,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `shareOrCopy(url, title, text)` | `shared/utils/share.ts` | Uses `navigator.share` if available, falls back to `navigator.clipboard.writeText`. Use for all invite/share flows. |
 | `copyWithTimeout(value, setter, ms?)` | `shared/utils/share.ts` | Copies `value` to clipboard, calls `setter(value)` immediately and `setter(null)` after `ms` (default 2000). Use for copy-ID buttons that show a transient "Copied" label. |
 | `isValidEmail(email)` | `shared/utils/validators.ts` | Returns `true` if the string matches a basic email pattern. Use before calling invite edge functions. |
+| `nextStepValue(current, fallback, step, min, direction)` | `shared/utils/number-step.ts` | Next value of a ± stepper: starts from the value, else the placeholder, else 0; clamps to `min`; rounds to 2 decimals. |
+| `formatDuration(seconds)` | `shared/utils/format.ts` | Clock-style duration: `28:14`, or `1:05:09` past an hour; `0:00` for negative or invalid input. |
 
 ---
 

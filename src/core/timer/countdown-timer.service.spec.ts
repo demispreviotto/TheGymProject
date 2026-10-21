@@ -92,6 +92,59 @@ describe('CountdownTimerService', () => {
     expect(service.isFullscreen()).toBe(true);
   });
 
+  describe('extend', () => {
+    it('adds time to a running timer', async () => {
+      service.start(10);
+      service.extend(30);
+      expect(service.secondsLeft()).toBe(40);
+      service.cancel();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('is a no-op when no timer is running', () => {
+      service.extend(30);
+      expect(service.secondsLeft()).toBeNull();
+      expect(service.isActive()).toBe(false);
+    });
+
+    it('ignores zero and negative amounts', async () => {
+      service.start(10);
+      service.extend(0);
+      service.extend(-5);
+      expect(service.secondsLeft()).toBe(10);
+      service.cancel();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('stops the blinking when it lifts the timer above 5 seconds', async () => {
+      service.start(4);
+      expect(service.isBlinking()).toBe(true);
+      service.extend(30);
+      expect(service.isBlinking()).toBe(false);
+      service.cancel();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('keeps counting down from the extended value on the same interval', async () => {
+      service.start(10);
+      await vi.advanceTimersByTimeAsync(2000); // 8
+      service.extend(30); // 38
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(service.secondsLeft()).toBe(37);
+      service.cancel();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('does not change the fullscreen / minimised state', async () => {
+      service.start(10);
+      service.toggle(); // minimise
+      service.extend(30);
+      expect(service.isFullscreen()).toBe(false);
+      service.cancel();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+  });
+
   describe('wake lock', () => {
     it('requests a screen lock on start and releases it on cancel', async () => {
       service.start(10);

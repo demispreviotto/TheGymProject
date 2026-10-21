@@ -6,21 +6,39 @@
  *
  * The `as const` assertion lets TypeScript derive IconName automatically
  * from the keys — no manual type union to maintain.
+ *
+ * ── Where the icons come from ──────────────────────────────────────────────
+ * Every icon is from Phosphor Icons (https://phosphoricons.com), Regular
+ * weight, MIT licensed. To add one:
+ *   1. Find it at https://phosphoricons.com and pick the "Regular" weight.
+ *   2. Click the icon → "Copy SVG" (or fetch the file from
+ *      https://github.com/phosphor-icons/core/tree/main/assets/regular).
+ *   3. Create svg/<name>.ts with a `// Phosphor: <Name> — <url>` header and
+ *      the inner elements of the <svg> (without the <svg> wrapper) as a string.
+ *   4. Import it below and add the key to ICONS.
+ * All icons use a 256×256 viewBox and `currentColor`, so size and colour come
+ * from the Tailwind classes passed to <app-icon>.
  */
 import { addressBookTabs } from './svg/address-book-tabs';
 import { arrowRightFromBracket } from './svg/arrow-right-from-bracket';
+import { barbell } from './svg/barbell';
 import { bars } from './svg/bars';
 import { bolt } from './svg/bolt';
+import { brain } from './svg/brain';
 import { calendar } from './svg/calendar';
 import { check } from './svg/check';
+import { checks } from './svg/checks';
 import { chevronDown } from './svg/chevron-down';
+import { dotsThree } from './svg/dots-three';
 import { dragHandle } from './svg/drag-handle';
 import { envelope } from './svg/envelope';
 import { eye } from './svg/eye';
 import { eyeSlash } from './svg/eye-slash';
 import { listNumbers } from './svg/list-numbers';
 import { lockClosed } from './svg/lock-closed';
+import { lockers } from './svg/lockers';
 import { lockOpen } from './svg/lock-open';
+import { minus } from './svg/minus';
 import { pencil } from './svg/pencil';
 import { plus } from './svg/plus';
 import { share } from './svg/share';
@@ -40,11 +58,15 @@ import { xMark } from './svg/x-mark';
 export const ICONS = {
   'address-book-tabs': addressBookTabs,
   'arrow-right-from-bracket': arrowRightFromBracket,
+  'barbell': barbell,
   'bars': bars,
   'bolt': bolt,
+  'brain': brain,
   'calendar': calendar,
   'check': check,
+  'checks': checks,
   'chevron-down': chevronDown,
+  'dots-three': dotsThree,
   'drag-handle': dragHandle,
   'envelope': envelope,
   'eye': eye,
@@ -52,6 +74,8 @@ export const ICONS = {
   'list-numbers': listNumbers,
   'lock-closed': lockClosed,
   'lock-open': lockOpen,
+  'lockers': lockers,
+  'minus': minus,
   'pencil': pencil,
   'plus': plus,
   'share': share,
