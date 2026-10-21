@@ -17,6 +17,9 @@ export interface InviteRequest {
   requester?: { name: string; email: string };
 }
 
+/** How many invite requests a user can have pending or approved at the same time. */
+export const MAX_INVITE_REQUESTS = 2;
+
 @Injectable({ providedIn: 'root' })
 export class InviteRequestService {
   private readonly supabase = inject(SUPABASE_CLIENT);
@@ -25,11 +28,13 @@ export class InviteRequestService {
   readonly myRequests = signal<InviteRequest[]>([]);
   readonly allRequests = signal<InviteRequest[]>([]);
 
-  readonly approvedCount = computed(
-    () => this.myRequests().filter(r => r.status === 'approved').length,
+  /** Slots in use: a pending request holds one until it is decided, an approved one keeps it. A rejected request frees it. */
+  readonly usedInvites = computed(
+    () => this.myRequests().filter(r => r.status === 'pending' || r.status === 'approved').length,
   );
 
-  readonly remainingInvites = computed(() => Math.max(0, 2 - this.approvedCount()));
+  /** What the Profile page shows, and exactly what submitRequest enforces: the two cannot disagree. */
+  readonly remainingInvites = computed(() => Math.max(0, MAX_INVITE_REQUESTS - this.usedInvites()));
 
   readonly pendingCount = computed(
     () => this.allRequests().filter(r => r.status === 'pending').length,
@@ -80,10 +85,9 @@ export class InviteRequestService {
     const requesterId = this.auth.profile()?.id;
     if (!requesterId) return 'Not authenticated';
 
-    const pendingOrApproved = this.myRequests().filter(
-      r => r.status === 'pending' || r.status === 'approved',
-    ).length;
-    if (pendingOrApproved >= 2) return 'You have reached the maximum of 2 invite requests.';
+    if (this.remainingInvites() === 0) {
+      return `You have reached the maximum of ${MAX_INVITE_REQUESTS} invite requests.`;
+    }
 
     const { error } = await this.supabase.from('invite_requests').insert({
       requester_id: requesterId,
