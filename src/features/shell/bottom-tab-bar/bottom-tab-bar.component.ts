@@ -8,7 +8,8 @@ const TAB_BASE = 'flex h-full min-h-12 w-full flex-col items-center justify-cent
 
 /**
  * Mobile-only bottom navigation: one tab per page of the user's role (at most 5, so there is no
- * overflow menu). Hidden from `lg` up, where the sidebar takes over.
+ * overflow menu). A floating card (same surface and corners as the page's cards) inset from the
+ * screen edges. Hidden from `lg` up, where the sidebar takes over.
  */
 @Component({
   selector: 'app-bottom-tab-bar',
@@ -17,7 +18,7 @@ const TAB_BASE = 'flex h-full min-h-12 w-full flex-col items-center justify-cent
   imports: [RouterLink, AppIconComponent, TranslatePipe],
   template: `
     <nav
-      class="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-800 bg-neutral-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      class="fixed inset-x-3 bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] z-40 rounded-xl bg-neutral-900 shadow-lg shadow-black/40 lg:hidden"
       [attr.aria-label]="'nav.main' | translate"
     >
       <ul class="flex h-16 items-stretch px-1">

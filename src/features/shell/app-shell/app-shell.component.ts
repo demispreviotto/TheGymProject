@@ -21,11 +21,12 @@ import {
 const NAV_LINK_BASE = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors';
 
 /**
- * Height of the bottom tab bar's content, exposed as a CSS variable so everything that sits above it
- * (page padding, snap-panel height, the rest-timer toast) follows whether the bar is shown. The safe
- * area inset is added where the variable is used, because it applies with or without the bar.
+ * Space the floating bottom tab bar takes up (its 4rem height plus its 0.75rem margin), exposed as a
+ * CSS variable so everything that sits above it (page padding, snap-panel height, the rest-timer
+ * toast) follows whether the bar is shown. The safe area inset is added where the variable is used,
+ * because it applies with or without the bar.
  */
-const TAB_BAR_SHOWN = '[--tabbar-h:4rem]';
+const TAB_BAR_SHOWN = '[--tabbar-h:4.75rem]';
 const TAB_BAR_HIDDEN = '[--tabbar-h:0px]';
 
 /**
@@ -46,7 +47,7 @@ const TAB_BAR_HIDDEN = '[--tabbar-h:0px]';
     <div class="min-h-screen bg-neutral-950 text-neutral-100 flex">
 
       <!-- Mobile top bar -->
-      <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 border-b border-neutral-800 bg-neutral-950 px-4 flex items-center justify-between max-w-[100dvw]">
+      <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 bg-neutral-950 px-4 flex items-center justify-between max-w-[100dvw]">
         <app-tenant-branding />
         <app-user-avatar
           [name]="auth.profile()?.name ?? null"
