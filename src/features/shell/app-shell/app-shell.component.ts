@@ -1,5 +1,7 @@
 import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { FriendshipService } from '../../../core/friendships/friendship.service';
 import { LanguageService } from '../../../core/i18n/language.service';
@@ -11,7 +13,7 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { Language } from '../../../core/auth/auth.types';
 import { BottomTabBarComponent } from '../bottom-tab-bar/bottom-tab-bar.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
-import { navItemsForRole } from './nav-items';
+import { isMoreActive, navItemsForRole } from './nav-items';
 
 @Component({
   selector: 'app-shell',
@@ -94,7 +96,7 @@ import { navItemsForRole } from './nav-items';
       </div>
     </div>
 
-    <app-bottom-tab-bar [items]="tabItems()" (more)="openDrawer()" />
+    <app-bottom-tab-bar [items]="tabItems()" [moreActive]="moreActive()" (more)="openDrawer()" />
     <app-countdown-timer />
   `,
   styles: [`
@@ -108,6 +110,16 @@ export class AppShellComponent implements OnInit {
   readonly langService = inject(LanguageService);
   private readonly friendships = inject(FriendshipService);
   private readonly inviteRequests = inject(InviteRequestService);
+  private readonly router = inject(Router);
+
+  /** Current page, as a signal: router events are an async stream, converted at the boundary. */
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(event => event.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
 
   readonly drawerOpen = signal(false);
   readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
@@ -118,6 +130,7 @@ export class AppShellComponent implements OnInit {
 
   readonly navItems = computed(() => navItemsForRole(this.auth.profile()?.role));
   readonly tabItems = computed(() => this.navItems().filter(item => item.inTabBar));
+  readonly moreActive = computed(() => isMoreActive(this.navItems(), this.currentUrl()));
 
   /** Pending friend requests (free/admin) or pending invite requests (admin) are waiting for an answer. */
   readonly hasNotifications = computed(

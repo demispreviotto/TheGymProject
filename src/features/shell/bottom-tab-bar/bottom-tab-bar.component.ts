@@ -38,7 +38,7 @@ const TAB_BASE = 'flex h-full min-h-12 w-full flex-col items-center justify-cent
           </li>
         }
         <li class="min-w-0 flex-1">
-          <button type="button" (click)="more.emit()" [class]="tabClass(false)">
+          <button type="button" (click)="more.emit()" [class]="tabClass(moreActive())">
             <app-icon name="dots-three" iconClass="w-6 h-6 fill-current" />
             <span class="max-w-full truncate px-1 text-[11px] font-semibold leading-none">{{ 'tab.more' | translate }}</span>
           </button>
@@ -49,6 +49,9 @@ const TAB_BASE = 'flex h-full min-h-12 w-full flex-col items-center justify-cent
 })
 export class BottomTabBarComponent {
   readonly items = input.required<readonly NavItem[]>();
+
+  /** The current page lives behind "More", so that button is the lit one. */
+  readonly moreActive = input(false);
 
   /** The user tapped "More". */
   readonly more = output<void>();

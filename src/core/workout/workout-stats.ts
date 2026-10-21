@@ -1,8 +1,22 @@
-import type { WorkoutRowState } from './workout-row.types';
+import type { RoundInput, WorkoutRowState } from './workout-row.types';
+import type { WorkoutPrescribed } from './workout.service';
 
 export interface DayPosition {
   position: number;
   total: number;
+}
+
+/**
+ * Starting inputs of an exercise: one shared pair in standard mode, one pair per round otherwise,
+ * pre-filled with the suggested weight and the target reps. What the user sees on screen is then
+ * exactly what gets saved if they do not touch it.
+ */
+export function initialInputs(
+  prescribed: Pick<WorkoutPrescribed, 'tracking_mode' | 'rounds' | 'target_reps'>,
+  suggestedWeight: number | null,
+): RoundInput[] {
+  const count = prescribed.tracking_mode === 'standard' ? 1 : prescribed.rounds;
+  return Array.from({ length: count }, () => ({ weight: suggestedWeight, reps: prescribed.target_reps }));
 }
 
 export function completedCount(rows: readonly WorkoutRowState[]): number {

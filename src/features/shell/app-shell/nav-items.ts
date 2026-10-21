@@ -47,6 +47,20 @@ const NAV_BY_ROLE: Record<UserRole, readonly NavItem[]> = {
   ],
 };
 
+/**
+ * True when `url` belongs to a page that only lives behind "More" (not to any bottom tab),
+ * so the tab bar can highlight "More" instead of leaving every tab unlit.
+ */
+export function isMoreActive(items: readonly NavItem[], url: string): boolean {
+  const path = url.split(/[?#]/)[0];
+  const matches = (item: NavItem): boolean =>
+    item.exact ? path === item.route : path === item.route || path.startsWith(`${item.route}/`);
+
+  const onTab = items.some(item => item.inTabBar && matches(item));
+  const onMore = items.some(item => !item.inTabBar && matches(item));
+  return onMore && !onTab;
+}
+
 /** Navigation items for a role. An unknown or missing role gets the plain client navigation. */
 export function navItemsForRole(role: UserRole | null | undefined): readonly NavItem[] {
   return NAV_BY_ROLE[role ?? 'user'];
