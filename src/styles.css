@@ -17,6 +17,16 @@ svg {
   fill: #ffffff70
 }
 
+/* iOS Safari zooms the page when a focused field has a font-size under 16px,
+   and does not zoom back out. Keep fields at 16px on touch screens. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 @layer base {
   :root {
     /* Spartan UI / shadcn tokens — dark theme */
