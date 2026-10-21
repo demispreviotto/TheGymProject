@@ -1,41 +1,39 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy,
+  afterNextRender, DOCUMENT, Injector,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkoutService, WorkoutPlanFull, WorkoutPrescribed, LogPayload } from '../../../core/workout/workout.service';
+import { WorkoutService, WorkoutPlanFull, LogPayload } from '../../../core/workout/workout.service';
 import { PlanningService } from '../../../core/planning/planning.service';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import { CountdownTimerService } from '../../../core/timer/countdown-timer.service';
-import type { ExigenceLevel } from '../../../core/planning/planning.types';
+import type {
+  InputChange, RoundInput, RoundInputField, WorkoutRowState,
+} from '../../../core/workout/workout-row.types';
+import {
+  completedCount, dayPosition, firstIncompleteId, progressPercent, sessionVolume,
+} from '../../../core/workout/workout-stats';
+import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
+import { WorkoutSummaryComponent } from './components/workout-summary.component';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-interface RoundInput {
-  weight: number | null;
-  reps: number | null;
-}
-
-interface WorkoutRowState {
-  prescribed: WorkoutPrescribed;
-  suggestedWeight: number | null;
-  inputs: RoundInput[];
-  isCompleted: boolean;
-}
 
 @Component({
   selector: 'app-workout-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, AppIconComponent],
+  imports: [FormsModule, TranslatePipe, AppIconComponent, ExerciseCardComponent, WorkoutSummaryComponent],
   template: `
     <div class="max-w-lg mx-auto">
 
       @if (loading()) {
         <div class="space-y-4">
           @for (_ of skeletons; track $index) {
-            <div class="h-40 rounded-xl bg-neutral-800 animate-pulse"></div>
+            <div class="h-40 rounded-xl bg-neutral-900 animate-pulse"></div>
           }
         </div>
 
@@ -50,7 +48,7 @@ interface WorkoutRowState {
 
         @if (isSelfManagedUser()) {
           <!-- Self-managed: own plans (free / admin / trainer) -->
-          <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+          <div class="mt-2 rounded-xl bg-neutral-900 p-5 space-y-3">
             @if (planningService.plannings().length > 0) {
               <p class="text-sm font-medium text-neutral-100">You have {{ planningService.plannings().length }} plan(s). Set one as active to start training.</p>
               <button
@@ -72,7 +70,7 @@ interface WorkoutRowState {
           </div>
         } @else {
           <!-- Trainer-assigned user: connect by shared plan ID -->
-          <div class="mt-2 rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-3">
+          <div class="mt-2 rounded-xl bg-neutral-900 p-5 space-y-3">
             <div>
               <p class="text-sm font-medium text-neutral-100">{{ 'dashboard.connect.title' | translate }}</p>
               <p class="text-xs text-neutral-500 mt-0.5">{{ 'dashboard.connect.hint' | translate }}</p>
@@ -82,7 +80,7 @@ interface WorkoutRowState {
                 type="text"
                 [(ngModel)]="connectInput"
                 [placeholder]="'dashboard.connect.placeholder' | translate"
-                class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
+                class="min-w-0 flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 font-mono placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
               />
               <button
                 (click)="connectPlan()"
@@ -99,108 +97,27 @@ interface WorkoutRowState {
         }
 
       } @else if (rows().length > 0) {
-        <div class="mb-5">
-          <h1 class="text-xl font-bold text-neutral-100">{{ plan()?.title }}</h1>
-          <p class="text-sm text-neutral-500 mt-0.5">{{ 'dashboard.day' | translate }} {{ activeDay() }}</p>
-        </div>
-
         <div class="space-y-3">
+          <app-workout-summary
+            [title]="plan()?.title ?? ''"
+            [dayPosition]="dayPos()"
+            [completed]="completedRows()"
+            [total]="rows().length"
+            [percent]="progress()"
+            [volume]="volume()"
+          />
+
           @for (row of rows(); track row.prescribed.id; let i = $index) {
-            <div [class]="exerciseCardClass(row.isCompleted)">
-
-              <!-- Header -->
-              <div class="flex items-start gap-2 mb-3">
-                <span class="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold"
-                      [class]="exigenceClass(row.prescribed.exigence)">
-                  {{ row.prescribed.exigence }}
-                </span>
-                <div class="flex-1 min-w-0">
-                  <p class="font-semibold text-neutral-100 text-sm leading-tight">
-                    {{ row.prescribed.exercise?.name ?? 'Exercise' }}
-                  </p>
-                  <p class="text-xs text-neutral-500 mt-0.5">
-                    {{ row.prescribed.rounds }} rounds · {{ row.prescribed.target_reps }} reps · {{ row.prescribed.rest_time_minutes }} min rest
-                  </p>
-                </div>
-                <button
-                  (click)="startTimer(row.prescribed.rest_time_minutes)"
-                  [attr.disabled]="timerService.isActive() ? '' : null"
-                  title="Start rest timer"
-                  class="flex-shrink-0 p-1.5 rounded-lg text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <app-icon name="timer" iconClass="w-4 h-4" />
-                </button>
-              </div>
-
-              @if (row.suggestedWeight !== null) {
-                <p class="text-xs text-neutral-500 mb-3">
-                  {{ 'dashboard.suggested' | translate }}: <span class="text-neutral-300 font-medium">{{ row.suggestedWeight }} kg</span>
-                </p>
-              }
-
-              <!-- Standard mode: one shared weight + reps -->
-              @if (row.prescribed.tracking_mode === 'standard') {
-                <div class="flex gap-3">
-                  <div class="flex-1">
-                    <label class="text-xs text-neutral-500 mb-1 block">{{ 'dashboard.weight' | translate }}</label>
-                    <input
-                      type="number" min="0" step="0.5"
-                      [value]="row.inputs[0].weight ?? ''"
-                      (input)="updateInput(i, 0, 'weight', $event)"
-                      [attr.disabled]="row.isCompleted ? '' : null"
-                      [attr.placeholder]="row.suggestedWeight ?? 0"
-                      class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
-                    />
-                  </div>
-                  <div class="flex-1">
-                    <label class="text-xs text-neutral-500 mb-1 block">{{ 'dashboard.reps' | translate }}</label>
-                    <input
-                      type="number" min="0"
-                      [value]="row.inputs[0].reps ?? ''"
-                      (input)="updateInput(i, 0, 'reps', $event)"
-                      [attr.disabled]="row.isCompleted ? '' : null"
-                      [attr.placeholder]="row.prescribed.target_reps"
-                      class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
-                    />
-                  </div>
-                </div>
-
-              <!-- Granular / failure mode: per-round pairs -->
-              } @else {
-                <div class="space-y-2">
-                  @for (input of row.inputs; track $index; let r = $index) {
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-neutral-500 w-16 flex-shrink-0">{{ 'dashboard.round' | translate }} {{ r + 1 }}</span>
-                      <input
-                        type="number" min="0" step="0.5"
-                        [value]="input.weight ?? ''"
-                        (input)="updateInput(i, r, 'weight', $event)"
-                        [attr.disabled]="row.isCompleted ? '' : null"
-                        placeholder="kg"
-                        class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
-                      />
-                      <input
-                        type="number" min="0"
-                        [value]="input.reps ?? ''"
-                        (input)="updateInput(i, r, 'reps', $event)"
-                        [attr.disabled]="row.isCompleted ? '' : null"
-                        placeholder="reps"
-                        class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
-                      />
-                    </div>
-                  }
-                </div>
-              }
-
-              <!-- Complete toggle -->
-              <button
-                (click)="toggleComplete(i)"
-                [class]="completeButtonClass(row.isCompleted)"
-              >
-                <app-icon name="check" />
-                {{ row.isCompleted ? ('dashboard.completed' | translate) : ('dashboard.complete' | translate) }}
-              </button>
-            </div>
+            <app-exercise-card
+              [row]="row"
+              [expanded]="openId() === row.prescribed.id"
+              [usesAutoRm]="usesAutoRm()"
+              [timerBusy]="timerService.isActive()"
+              (expand)="openCard(row.prescribed.id)"
+              (inputChange)="setInput(i, $event)"
+              (completeToggle)="toggleComplete(i)"
+              (timerStart)="startTimer(row.prescribed.rest_time_minutes)"
+            />
           }
         </div>
 
@@ -265,6 +182,8 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   private readonly workoutService = inject(WorkoutService);
   readonly planningService = inject(PlanningService);
   private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly doc = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   readonly router = inject(Router);
   readonly timerService = inject(CountdownTimerService);
 
@@ -276,6 +195,9 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   readonly subjectiveScore = signal(0);
   readonly saving = signal(false);
   readonly saveError = signal<string | null>(null);
+
+  /** Card the user opened by hand. Null means "follow the current exercise". */
+  readonly manualOpenId = signal<string | null>(null);
 
   readonly assignedPlanId = computed(() => this.auth.profile()?.assigned_planning_id ?? null);
   readonly isSelfManagedUser = computed(() => {
@@ -290,6 +212,18 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   readonly planningNewRoute = computed(() =>
     this.auth.profile()?.role === 'trainer' ? '/trainer/planning/new' : '/my-plan/planning/new'
   );
+
+  // Summary card
+  readonly usesAutoRm = computed(() => this.plan()?.use_auto_1rm ?? false);
+  readonly completedRows = computed(() => completedCount(this.rows()));
+  readonly progress = computed(() => progressPercent(this.completedRows(), this.rows().length));
+  readonly volume = computed(() => sessionVolume(this.rows()));
+  readonly dayPos = computed(() =>
+    dayPosition(this.plan()?.planning_days.map(d => d.day_number) ?? [], this.activeDay()),
+  );
+
+  /** Exactly one card is open: the one picked by hand, else the first exercise not yet done. */
+  readonly openId = computed(() => this.manualOpenId() ?? firstIncompleteId(this.rows()));
 
   readonly skeletons = [1, 2, 3];
   readonly stars = [1, 2, 3, 4, 5];
@@ -306,38 +240,21 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     await this.loadWorkout();
   }
 
-  exerciseCardClass(isCompleted: boolean): string {
-    const base = 'rounded-xl border p-4 transition-colors';
-    return isCompleted
-      ? `${base} border-green-700/50 bg-green-950/30`
-      : `${base} border-neutral-800 bg-neutral-900`;
+  setInput(rowIndex: number, change: InputChange): void {
+    this.setInputValue(rowIndex, change.roundIndex, change.field, change.value);
   }
 
-  exigenceClass(exigence: ExigenceLevel): string {
-    const map: Record<ExigenceLevel, string> = {
-      A: 'bg-red-500/20 text-red-400 border border-red-500/30',
-      B: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
-      C: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-      D: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
-    };
-    return map[exigence];
-  }
-
-  completeButtonClass(isCompleted: boolean): string {
-    const base = 'mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors';
-    return isCompleted
-      ? `${base} bg-green-800/40 text-green-400 hover:bg-green-800/60`
-      : `${base} bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-100`;
-  }
-
-  updateInput(rowIndex: number, roundIndex: number, field: 'weight' | 'reps', event: Event): void {
-    const raw = (event.target as HTMLInputElement).value;
-    const value = raw === '' ? null : parseFloat(raw);
+  setInputValue(
+    rowIndex: number,
+    roundIndex: number,
+    field: RoundInputField,
+    value: number | null,
+  ): void {
     this.rows.update(rows => {
       const updated = [...rows];
       const row = { ...updated[rowIndex] };
-      const inputs = [...row.inputs];
-      inputs[roundIndex] = { ...inputs[roundIndex], [field]: isNaN(value as number) ? null : value };
+      const inputs: RoundInput[] = [...row.inputs];
+      inputs[roundIndex] = { ...inputs[roundIndex], [field]: value };
       row.inputs = inputs;
       updated[rowIndex] = row;
       return updated;
@@ -350,6 +267,16 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
       updated[rowIndex] = { ...updated[rowIndex], isCompleted: !updated[rowIndex].isCompleted };
       return updated;
     });
+    // Hand the open card back to the current exercise, so completing one moves on to the next.
+    this.manualOpenId.set(null);
+    const currentId = this.openId();
+    if (currentId !== null) this.scrollToCard(currentId);
+  }
+
+  openCard(prescribedId: string): void {
+    if (this.openId() === prescribedId) return;
+    this.manualOpenId.set(prescribedId);
+    this.scrollToCard(prescribedId);
   }
 
   startTimer(restMinutes: number): void {
@@ -451,9 +378,19 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
     await this.loadWorkout();
   }
 
+  /** Scrolls a card to the top once the newly opened layout has rendered. */
+  private scrollToCard(prescribedId: string): void {
+    afterNextRender(() => {
+      const card = this.doc.getElementById(exerciseCardDomId(prescribedId));
+      const reduceMotion = this.doc.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches ?? false;
+      card?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    }, { injector: this.injector });
+  }
+
   private async loadWorkout(): Promise<void> {
     this.loading.set(true);
     this.rows.set([]);
+    this.manualOpenId.set(null);
 
     const planId = this.assignedPlanId();
     const profile = this.auth.profile();
