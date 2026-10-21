@@ -67,6 +67,13 @@ export class CountdownTimerService {
     this.wakeLock = null;
   }
 
+  /** Adds time to the running timer. No-op when no timer is active or `seconds` is not positive. */
+  extend(seconds: number): void {
+    const current = this.secondsLeft();
+    if (current === null || seconds <= 0) return;
+    this.secondsLeft.set(current + seconds);
+  }
+
   toggle(): void {
     this.isFullscreen.update(v => !v);
   }
