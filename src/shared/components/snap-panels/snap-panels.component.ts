@@ -27,7 +27,7 @@ const PANEL_BASE = 'min-h-0 overflow-hidden rounded-xl bg-neutral-950 ring-1 rin
   host: {
     // Below lg: the viewport minus the top bar (3.5rem), the page padding (1rem + 1.5rem), the tab bar
     // (--tabbar-h, set by the shell) and the bottom safe area. From lg: just the page padding.
-    class: 'block h-[calc(100dvh_-_6rem_-_var(--tabbar-h,4rem)_-_env(safe-area-inset-bottom))] min-h-[26rem] lg:h-[calc(100dvh-3rem)]',
+    class: 'block h-[calc(100dvh_-_6rem_-_var(--tabbar-h,4.75rem)_-_env(safe-area-inset-bottom))] min-h-[26rem] lg:h-[calc(100dvh-3rem)]',
   },
   template: `
     <div class="flex h-full min-h-0 flex-col gap-3">
