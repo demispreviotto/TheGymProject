@@ -320,8 +320,9 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |
 | `tenant/tenant.service.ts` | `tenant` computed from `AuthService`; `update(patch)` — DB write + live theme propagation |
 | `workout/workout.service.ts` | `loadPlan` (deep join with exercises), `loadLastSession`, `loadLastLog`, `saveSession`, `resolveActiveDay`, `computeSuggestedWeight` |
-| `workout/workout-row.types.ts` | `WorkoutRowState` (one exercise of the active day as tracked on the dashboard), `RoundInput`, `InputChange` |
-| `workout/workout-stats.ts` | Pure dashboard helpers: `completedCount`, `progressPercent`, `rowVolume`, `sessionVolume`, `dayPosition` (index in the sorted day list, not the day number), `firstIncompleteId`, `topWeight`, `suggestionSource` |
+| `workout/workout-row.types.ts` | `WorkoutRowState` (one exercise of the active day: `inputs` + `roundsDone[]`, one flag per round; the exercise is completed when every round is done), `RoundInput`, `InputChange` |
+| `workout/workout-stats.ts` | Pure dashboard helpers. Rows: `createRow` (inputs pre-filled with the suggested weight and target reps, so what is shown is what is saved), `initialInputs`, `roundCount`. Rounds: `isRowCompleted`, `completedRounds`, `currentRound`, `lastDoneRound`, `withRoundDone`. Totals: `completedCount`, `progressPercent`, `completedVolume` / `sessionVolume` (rounds done so far), `dayPosition` (index in the sorted day list, not the day number), `firstIncompleteId`, `topWeight`, `suggestionSource` |
+| `workout/session-clock.ts` | `SessionClock`: elapsed workout time (`elapsedSeconds`), started by the first user action, derived from the wall clock. Provided per dashboard (`providers: [SessionClock]`), not a root singleton; its interval is cleared on destroy |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
 | `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `extend(seconds)` (the +30s button), `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
 | `push/push-notification.service.ts` | `isSupported`, `isSubscribed` signals; `enable()` requests a `SwPush` subscription (VAPID key in `push/push.config.ts`) and upserts it into `push_subscriptions` |
@@ -333,14 +334,14 @@ All source lives under `src/`. Angular app root is `src/app/`.
 |------|-------|------|
 | `auth/login/login.component.ts` | `/login` | public |
 | `shell/app-shell/app-shell.component.ts` | `/` (layout wrapper) | all authenticated — desktop sidebar + mobile top bar, bottom tab bar and "More" drawer, all driven by `navItemsForRole()`; `hasNotifications` (pending friend/invite requests) feeds the avatar dot |
-| `shell/app-shell/nav-items.ts` | *(pure)* | `navItemsForRole(role)`: the role's pages in sidebar order; `inTabBar` marks the ≤4 that become bottom tabs, the rest live behind "More" |
-| `shell/bottom-tab-bar/bottom-tab-bar.component.ts` | *(shell, below `lg` only)* | all authenticated — role tabs + "More" (emits `more`, which opens the drawer: language, sign out, remaining pages) |
+| `shell/app-shell/nav-items.ts` | *(pure)* | `navItemsForRole(role)`: the role's pages in sidebar order; `inTabBar` marks the ≤4 that become bottom tabs, the rest live behind "More". `isMoreActive(items, url)`: true on a page that only lives behind "More", so that button is lit |
+| `shell/bottom-tab-bar/bottom-tab-bar.component.ts` | *(shell, below `lg` only)* | all authenticated — role tabs + "More" (input `moreActive`; emits `more`, which opens the drawer: language, sign out, remaining pages) |
 | `shell/user-avatar/user-avatar.component.ts` | *(shell, mobile top bar)* | all authenticated — initials on the tenant colour, links to `/profile`, optional alert dot |
 | `profile/profile-page/profile-page.component.ts` | `/profile` | all |
-| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin — owns all state; exactly one exercise card is open (`openId` = hand-picked `manualOpenId` ?? first unfinished exercise) |
-| `client/workout-dashboard/components/workout-summary.component.ts` | *(sub-component)* | progress card: plan, "Day N of M", completion bar, session volume |
-| `client/workout-dashboard/components/exercise-card.component.ts` | *(sub-component)* | open (inputs) or collapsed (done / pending) row; emits `expand`, `inputChange`, `completeToggle`, `timerStart` |
-| `client/workout-dashboard/components/set-inputs.component.ts` | *(sub-component)* | weight/reps steppers: one pair in standard mode, one per round in granular/failure |
+| `client/workout-dashboard/workout-dashboard.component.ts` | `/dashboard` | user · free · trainer · admin — owns all state; exactly one exercise card is open (`openId` = hand-picked `manualOpenId` ?? first unfinished exercise). `completeSet(i)` finishes the current round, starts the exercise's rest timer between rounds and moves on after the last one; `undoRound(i, r)` reopens a round; saving writes `is_completed` per round |
+| `client/workout-dashboard/components/workout-summary.component.ts` | *(sub-component)* | progress card: plan, "Day N of M", completion bar, session volume and duration |
+| `client/workout-dashboard/components/exercise-card.component.ts` | *(sub-component)* | open (inputs + "Complete round k/n", with the rest time) or collapsed (done / "2/4 rounds" / pending) row; emits `expand`, `inputChange`, `completeSet`, `undoRound(index)`, `timerStart` |
+| `client/workout-dashboard/components/set-inputs.component.ts` | *(sub-component)* | weight/reps steppers: standard mode = one shared pair with a progress dot per round; granular/failure = one block per round that locks when done and reopens via its check chip |
 | `client/workout-dashboard/components/suggestion-chip.component.ts` | *(sub-component)* | brain-icon suggested-weight hint; self-contained, remove it with its single usage in the exercise card |
 | `client/client-shell/client-shell.component.ts` | *(unused — legacy stub)* | — |
 | `trainer/trainer-shell/trainer-shell.component.ts` | `/trainer` (bare router-outlet) | trainer |
@@ -395,6 +396,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `isValidEmail(email)` | `shared/utils/validators.ts` | Returns `true` if the string matches a basic email pattern. Use before calling invite edge functions. |
 | `nextStepValue(current, fallback, step, min, direction)` | `shared/utils/number-step.ts` | Next value of a ± stepper: starts from the value, else the placeholder, else 0; clamps to `min`; rounds to 2 decimals. |
 | `initials(name)` | `shared/utils/initials.ts` | Up to two uppercase initials (first and last word); `"?"` when there is no name. |
+| `formatDuration(seconds)` | `shared/utils/format.ts` | Clock-style duration: `28:14`, or `1:05:09` past an hour; `0:00` for negative or invalid input. |
 
 ---
 
