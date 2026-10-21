@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy,
+  Component, inject, signal, computed, OnInit, ChangeDetectionStrategy,
   afterNextRender, DOCUMENT, Injector,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -184,7 +184,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
     }
   `,
 })
-export class WorkoutDashboardComponent implements OnInit, OnDestroy {
+export class WorkoutDashboardComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly workoutService = inject(WorkoutService);
   readonly planningService = inject(PlanningService);
@@ -301,10 +301,6 @@ export class WorkoutDashboardComponent implements OnInit, OnDestroy {
   startTimer(restMinutes: number): void {
     this.clock.start();
     this.timerService.start(Math.round(restMinutes * 60));
-  }
-
-  ngOnDestroy(): void {
-    this.timerService.cancel();
   }
 
   openFinish(): void {
