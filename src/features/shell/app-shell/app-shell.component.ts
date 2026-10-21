@@ -1,37 +1,38 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
+import { FriendshipService } from '../../../core/friendships/friendship.service';
 import { LanguageService } from '../../../core/i18n/language.service';
+import { InviteRequestService } from '../../../core/invite-requests/invite-request.service';
 import { TenantBrandingComponent } from '../../../shared/components/tenant-branding/tenant-branding.component';
 import { CountdownTimerComponent } from '../../../shared/components/countdown-timer/countdown-timer.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import type { Language } from '../../../core/auth/auth.types';
+import { BottomTabBarComponent } from '../bottom-tab-bar/bottom-tab-bar.component';
+import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
+import { navItemsForRole } from './nav-items';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TenantBrandingComponent, CountdownTimerComponent, TranslatePipe, AppIconComponent],
+  imports: [
+    RouterOutlet, RouterLink, RouterLinkActive, TenantBrandingComponent, CountdownTimerComponent,
+    TranslatePipe, AppIconComponent, BottomTabBarComponent, UserAvatarComponent,
+  ],
   template: `
     <div class="min-h-screen bg-neutral-950 text-neutral-100 flex">
 
       <!-- Mobile top bar -->
       <header class="lg:hidden fixed top-0 inset-x-0 z-30 h-14 border-b border-neutral-800 bg-neutral-950 px-4 flex items-center justify-between max-w-[100dvw]">
-        <button
-          (click)="toggleDrawer()"
-          class="p-2 -ml-1 rounded-md text-neutral-400 hover:text-neutral-100 transition-colors"
-          aria-label="Open navigation"
-        >
-          <app-icon name="bars" iconClass="w-5 h-5" />
-        </button>
         <app-tenant-branding />
-        <span class="text-xs text-neutral-500 truncate max-w-[100px]">{{ auth.profile()?.name }}</span>
+        <app-user-avatar [name]="auth.profile()?.name ?? null" [showDot]="hasNotifications()" />
       </header>
 
       <!-- Mobile backdrop -->
       @if (drawerOpen()) {
-        <div class="lg:hidden fixed inset-0 z-40 bg-black/60" (click)="closeDrawer()"></div>
+        <div class="lg:hidden fixed inset-0 z-[45] bg-black/60" (click)="closeDrawer()"></div>
       }
 
       <!-- Sidebar / Drawer -->
@@ -42,74 +43,18 @@ import type { Language } from '../../../core/auth/auth.types';
         </div>
 
         <nav class="flex-1 flex flex-col gap-1 p-3 overflow-y-auto">
-          @if (isAdmin()) {
-            <a routerLink="/dashboard" routerLinkActive="bg-neutral-800 text-neutral-100"
-               [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()" class="nav-link">
-              <app-icon name="bolt" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.workout' | translate }}
-            </a>
-            <a routerLink="/admin/requests" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-              <app-icon name="envelope" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.admin.requests' | translate }}
-            </a>
-            <a routerLink="/admin/users" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-              <app-icon name="user-group" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.admin.users' | translate }}
-            </a>
-          } @else if (isTrainer()) {
-            <a routerLink="/dashboard" routerLinkActive="bg-neutral-800 text-neutral-100"
-               [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()" class="nav-link">
-              <app-icon name="bolt" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.workout' | translate }}
-            </a>
-            <a routerLink="/trainer/exercises" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-              <app-icon name="bars" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.exercises' | translate }}
-            </a>
-            <a routerLink="/trainer/planning" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-              <app-icon name="calendar" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.plans' | translate }}
-            </a>
-            <a routerLink="/trainer/clients" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-              <app-icon name="users" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.clients' | translate }}
-            </a>
-          } @else {
-            <a routerLink="/dashboard" routerLinkActive="bg-neutral-800 text-neutral-100"
-               [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()" class="nav-link">
-              <app-icon name="bolt" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.workout' | translate }}
+          @for (item of navItems(); track item.route) {
+            <a
+              [routerLink]="item.route"
+              routerLinkActive="bg-neutral-800 text-neutral-100"
+              [routerLinkActiveOptions]="{ exact: !!item.exact }"
+              (click)="closeDrawer()"
+              class="nav-link"
+            >
+              <app-icon [name]="item.icon" iconClass="w-4 h-4 flex-shrink-0" />
+              {{ item.labelKey | translate }}
             </a>
           }
-
-          @if (isFreeOrAdmin()) {
-            <a routerLink="/my-plan/planning" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-               <app-icon name="strategy" iconClass="w-4 h-4 flex-shrink-0" />
-               {{ 'nav.myplan.planning' | translate }}
-               </a>
-               <a routerLink="/my-plan/exercises" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-               <app-icon name="list-numbers" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.myplan.exercises' | translate }}
-            </a>
-            <a routerLink="/my-plan/friends" routerLinkActive="bg-neutral-800 text-neutral-100"
-               (click)="closeDrawer()" class="nav-link">
-              <app-icon name="users" iconClass="w-4 h-4 flex-shrink-0" />
-              {{ 'nav.myplan.friends' | translate }}
-            </a>
-          }
-
-          <a routerLink="/profile" routerLinkActive="bg-neutral-800 text-neutral-100"
-             (click)="closeDrawer()" class="nav-link">
-            <app-icon name="user" iconClass="w-4 h-4 flex-shrink-0" />
-            {{ 'nav.profile' | translate }}
-          </a>
         </nav>
 
         <div class="p-3 border-t border-neutral-800 flex-shrink-0 space-y-1">
@@ -143,12 +88,13 @@ import type { Language } from '../../../core/auth/auth.types';
       <!-- Page content -->
       <div class="flex-1 lg:ml-56 flex flex-col min-h-screen">
         <div class="h-14 lg:hidden flex-shrink-0"></div>
-        <main class="flex-1 p-4 lg:p-6 overflow-y-auto max-w-[100dvw]">
+        <main class="flex-1 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-6 overflow-y-auto max-w-[100dvw]">
           <router-outlet />
         </main>
       </div>
     </div>
 
+    <app-bottom-tab-bar [items]="tabItems()" (more)="openDrawer()" />
     <app-countdown-timer />
   `,
   styles: [`
@@ -157,17 +103,26 @@ import type { Language } from '../../../core/auth/auth.types';
     }
   `],
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnInit {
   readonly auth = inject(AuthService);
   readonly langService = inject(LanguageService);
+  private readonly friendships = inject(FriendshipService);
+  private readonly inviteRequests = inject(InviteRequestService);
 
   readonly drawerOpen = signal(false);
-  readonly isTrainer = computed(() => this.auth.profile()?.role === 'trainer');
   readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
   readonly isFreeOrAdmin = computed(() => {
     const role = this.auth.profile()?.role;
     return role === 'free' || role === 'admin';
   });
+
+  readonly navItems = computed(() => navItemsForRole(this.auth.profile()?.role));
+  readonly tabItems = computed(() => this.navItems().filter(item => item.inTabBar));
+
+  /** Pending friend requests (free/admin) or pending invite requests (admin) are waiting for an answer. */
+  readonly hasNotifications = computed(
+    () => this.friendships.pendingReceived().length > 0 || this.inviteRequests.pendingCount() > 0,
+  );
 
   readonly sidebarClass = computed(() => {
     const base =
@@ -176,6 +131,11 @@ export class AppShellComponent {
     return `${base} ${mobileClass}`;
   });
 
+  ngOnInit(): void {
+    if (this.isFreeOrAdmin()) void this.friendships.load();
+    if (this.isAdmin()) void this.inviteRequests.loadAllRequests();
+  }
+
   langBtnClass(lang: Language): string {
     const active = this.langService.activeLanguage() === lang;
     return active
@@ -183,7 +143,7 @@ export class AppShellComponent {
       : 'text-xs text-neutral-500 hover:text-neutral-300 transition-colors';
   }
 
-  toggleDrawer(): void { this.drawerOpen.update(v => !v); }
+  openDrawer(): void { this.drawerOpen.set(true); }
   closeDrawer(): void { this.drawerOpen.set(false); }
   setLanguage(lang: Language): void { this.langService.setLanguage(lang); }
 }

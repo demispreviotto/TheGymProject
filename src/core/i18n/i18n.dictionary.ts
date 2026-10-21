@@ -10,6 +10,20 @@ export const dictionary = {
   'nav.workout':          { en: "Today's Workout",  es: 'Entrenamiento de Hoy' },
   'nav.profile':          { en: 'Profile',           es: 'Perfil' },
   'nav.signout':          { en: 'Sign out',          es: 'Cerrar Sesión' },
+  'nav.main':             { en: 'Main navigation',   es: 'Navegación principal' },
+  'nav.profile.open':     { en: 'Open profile',      es: 'Abrir perfil' },
+  'nav.pending':          { en: 'Pending requests',  es: 'Solicitudes pendientes' },
+
+  // Mobile bottom tab bar (short labels)
+  'tab.workout':          { en: 'Workout',           es: 'Entrenar' },
+  'tab.exercises':        { en: 'Exercises',         es: 'Ejercicios' },
+  'tab.plans':            { en: 'Plans',             es: 'Planes' },
+  'tab.clients':          { en: 'Clients',           es: 'Clientes' },
+  'tab.friends':          { en: 'Friends',           es: 'Amigos' },
+  'tab.requests':         { en: 'Requests',          es: 'Solicitudes' },
+  'tab.users':            { en: 'Users',             es: 'Usuarios' },
+  'tab.profile':          { en: 'Profile',           es: 'Perfil' },
+  'tab.more':             { en: 'More',              es: 'Más' },
 
   // Common actions
   'common.loading':       { en: 'Loading…',          es: 'Cargando…' },
