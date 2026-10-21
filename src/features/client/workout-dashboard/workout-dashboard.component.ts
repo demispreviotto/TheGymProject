@@ -215,7 +215,7 @@ export class WorkoutDashboardComponent implements OnInit {
   });
 
   readonly planningRoute = computed(() =>
-    this.auth.profile()?.role === 'trainer' ? '/trainer/planning' : '/my-plan/planning'
+    this.auth.profile()?.role === 'trainer' ? '/trainer/planning' : '/my-plan'
   );
 
   readonly planningNewRoute = computed(() =>

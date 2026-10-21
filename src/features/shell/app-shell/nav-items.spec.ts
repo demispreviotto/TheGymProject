@@ -1,20 +1,22 @@
 import type { UserRole } from '../../../core/auth/auth.types';
-import { isMoreActive, navItemsForRole } from './nav-items';
+import { MAX_NAV_ITEMS, isNavItemActive, navItemsForRole, type NavItem } from './nav-items';
 
 const ROLES: UserRole[] = ['user', 'free', 'trainer', 'admin'];
 
 const routes = (role: UserRole): string[] => navItemsForRole(role).map(i => i.route);
-const tabRoutes = (role: UserRole): string[] => navItemsForRole(role).filter(i => i.inTabBar).map(i => i.route);
+const activeRoutes = (role: UserRole, url: string): string[] =>
+  navItemsForRole(role).filter(item => isNavItemActive(item, url)).map(i => i.route);
 
 describe('navItemsForRole', () => {
-  it('keeps the sidebar order of every role', () => {
+  it('gives every role its pages in order', () => {
     expect(routes('user')).toEqual(['/dashboard', '/profile']);
-    expect(routes('free')).toEqual(['/dashboard', '/my-plan/planning', '/my-plan/exercises', '/my-plan/friends', '/profile']);
+    expect(routes('free')).toEqual(['/dashboard', '/my-plan', '/my-plan/friends', '/profile']);
     expect(routes('trainer')).toEqual(['/dashboard', '/trainer/exercises', '/trainer/planning', '/trainer/clients', '/profile']);
-    expect(routes('admin')).toEqual([
-      '/dashboard', '/admin/requests', '/admin/users',
-      '/my-plan/planning', '/my-plan/exercises', '/my-plan/friends', '/profile',
-    ]);
+    expect(routes('admin')).toEqual(['/dashboard', '/admin', '/my-plan', '/my-plan/friends', '/profile']);
+  });
+
+  it('never has more items than the bottom tab bar can show', () => {
+    for (const role of ROLES) expect(navItemsForRole(role).length).toBeLessThanOrEqual(MAX_NAV_ITEMS);
   });
 
   it('puts the workout first and exact-matched for every role', () => {
@@ -25,24 +27,12 @@ describe('navItemsForRole', () => {
     }
   });
 
-  it('never has more than 4 bottom tabs, leaving room for "More"', () => {
-    for (const role of ROLES) {
-      expect(tabRoutes(role).length).toBeLessThanOrEqual(4);
-      expect(tabRoutes(role)[0]).toBe('/dashboard');
-    }
-  });
-
-  it('chooses the bottom tabs per role', () => {
-    expect(tabRoutes('user')).toEqual(['/dashboard', '/profile']);
-    expect(tabRoutes('free')).toEqual(['/dashboard', '/my-plan/planning', '/my-plan/exercises', '/my-plan/friends']);
-    expect(tabRoutes('trainer')).toEqual(['/dashboard', '/trainer/exercises', '/trainer/planning', '/trainer/clients']);
-    expect(tabRoutes('admin')).toEqual(['/dashboard', '/admin/requests', '/admin/users', '/my-plan/planning']);
-  });
-
-  it('only exposes routes the role can open (no trainer or admin routes for others)', () => {
-    expect(routes('user').some(r => r.startsWith('/trainer') || r.startsWith('/admin') || r.startsWith('/my-plan'))).toBe(false);
-    expect(routes('free').some(r => r.startsWith('/trainer') || r.startsWith('/admin'))).toBe(false);
-    expect(routes('trainer').some(r => r.startsWith('/admin') || r.startsWith('/my-plan'))).toBe(false);
+  it('only exposes routes the role can open', () => {
+    const forbidden = (role: UserRole, prefixes: string[]): boolean =>
+      routes(role).some(r => prefixes.some(p => r.startsWith(p)));
+    expect(forbidden('user', ['/trainer', '/admin', '/my-plan'])).toBe(false);
+    expect(forbidden('free', ['/trainer', '/admin'])).toBe(false);
+    expect(forbidden('trainer', ['/admin', '/my-plan'])).toBe(false);
   });
 
   it('has unique routes and a short label for every item', () => {
@@ -53,39 +43,56 @@ describe('navItemsForRole', () => {
     }
   });
 
-  describe('isMoreActive', () => {
-    const admin = navItemsForRole('admin');
-    const free = navItemsForRole('free');
-
-    it('is true on pages that only live behind "More"', () => {
-      expect(isMoreActive(admin, '/my-plan/friends')).toBe(true);
-      expect(isMoreActive(admin, '/my-plan/exercises/new')).toBe(true);
-      expect(isMoreActive(free, '/profile')).toBe(true);
-    });
-
-    it('is false on a bottom tab, including its nested pages', () => {
-      expect(isMoreActive(admin, '/admin/requests')).toBe(false);
-      expect(isMoreActive(admin, '/my-plan/planning/new')).toBe(false);
-      expect(isMoreActive(free, '/dashboard')).toBe(false);
-    });
-
-    it('ignores the query string and fragment', () => {
-      expect(isMoreActive(free, '/profile?tab=push#top')).toBe(true);
-      expect(isMoreActive(free, '/dashboard?x=1')).toBe(false);
-    });
-
-    it('does not mistake a longer path for a prefix match', () => {
-      expect(isMoreActive(free, '/profile-settings')).toBe(false);
-    });
-
-    it('is false for roles whose pages are all tabs, and for unknown pages', () => {
-      expect(isMoreActive(navItemsForRole('user'), '/profile')).toBe(false);
-      expect(isMoreActive(admin, '/somewhere/else')).toBe(false);
-    });
-  });
-
   it('falls back to the client navigation for a missing role', () => {
     expect(navItemsForRole(undefined)).toBe(navItemsForRole('user'));
     expect(navItemsForRole(null)).toBe(navItemsForRole('user'));
+  });
+});
+
+describe('isNavItemActive', () => {
+  const plain: NavItem = { route: '/profile', icon: 'user', labelKey: 'a', tabKey: 'tab.a' };
+  const exact: NavItem = { ...plain, route: '/dashboard', exact: true };
+
+  it('matches the route and its nested pages', () => {
+    expect(isNavItemActive(plain, '/profile')).toBe(true);
+    expect(isNavItemActive(plain, '/profile/security')).toBe(true);
+  });
+
+  it('does not mistake a longer path for a prefix match', () => {
+    expect(isNavItemActive(plain, '/profile-settings')).toBe(false);
+  });
+
+  it('matches an exact item only on the route itself', () => {
+    expect(isNavItemActive(exact, '/dashboard')).toBe(true);
+    expect(isNavItemActive(exact, '/dashboard/history')).toBe(false);
+  });
+
+  it('ignores the query string and fragment', () => {
+    expect(isNavItemActive(plain, '/profile?tab=push#top')).toBe(true);
+    expect(isNavItemActive(exact, '/dashboard?x=1')).toBe(true);
+  });
+
+  it('lights up the library for its own forms but not for the friends page', () => {
+    expect(activeRoutes('free', '/my-plan')).toEqual(['/my-plan']);
+    expect(activeRoutes('free', '/my-plan/planning/new')).toEqual(['/my-plan']);
+    expect(activeRoutes('free', '/my-plan/planning/abc-123')).toEqual(['/my-plan']);
+    expect(activeRoutes('free', '/my-plan/exercises/new')).toEqual(['/my-plan']);
+    expect(activeRoutes('free', '/my-plan/friends')).toEqual(['/my-plan/friends']);
+  });
+
+  it('lights up exactly one item on every page of every role', () => {
+    const pages: Record<UserRole, string[]> = {
+      user: ['/dashboard', '/profile'],
+      free: ['/dashboard', '/my-plan', '/my-plan/planning/new', '/my-plan/friends', '/profile'],
+      trainer: ['/dashboard', '/trainer/exercises', '/trainer/exercises/new', '/trainer/planning/abc', '/trainer/clients', '/profile'],
+      admin: ['/dashboard', '/admin', '/my-plan', '/my-plan/exercises/new', '/my-plan/friends', '/profile'],
+    };
+    for (const role of ROLES) {
+      for (const url of pages[role]) expect(activeRoutes(role, url), `${role} on ${url}`).toHaveLength(1);
+    }
+  });
+
+  it('lights up nothing on a page that is not in the navigation', () => {
+    expect(activeRoutes('free', '/somewhere/else')).toEqual([]);
   });
 });
