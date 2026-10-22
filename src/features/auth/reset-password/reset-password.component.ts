@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy,
+  Component, inject, signal, OnInit, ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -88,7 +88,7 @@ type PageState = 'loading' | 'form' | 'submitting' | 'expired';
     </div>
   `,
 })
-export class ResetPasswordComponent implements OnInit, OnDestroy {
+export class ResetPasswordComponent implements OnInit {
   private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly router = inject(Router);
 
@@ -99,26 +99,14 @@ export class ResetPasswordComponent implements OnInit, OnDestroy {
   readonly showPassword = signal(false);
   readonly showConfirmPassword = signal(false);
 
-  private authSubscription: { unsubscribe(): void } | null = null;
-  private expiredTimer: ReturnType<typeof setTimeout> | null = null;
-
-  ngOnInit(): void {
-    const { data: { subscription } } = this.supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        this.state.set('form');
-        if (this.expiredTimer) clearTimeout(this.expiredTimer);
-      }
-    });
-    this.authSubscription = subscription;
-
-    this.expiredTimer = setTimeout(() => {
-      if (this.state() === 'loading') this.state.set('expired');
-    }, 6000);
-  }
-
-  ngOnDestroy(): void {
-    this.authSubscription?.unsubscribe();
-    if (this.expiredTimer) clearTimeout(this.expiredTimer);
+  /**
+   * The recovery token was already exchanged for a session (by `/auth/confirm`, or by
+   * supabase-js reading an old-style link) before this page mounted, so listening for the
+   * `PASSWORD_RECOVERY` event would miss it. Ask for the session instead.
+   */
+  async ngOnInit(): Promise<void> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    this.state.set(session ? 'form' : 'expired');
   }
 
   async onSubmit(): Promise<void> {
@@ -137,6 +125,8 @@ export class ResetPasswordComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // A reset invalidates every other device's session.
+    await this.supabase.auth.signOut({ scope: 'others' });
     this.router.navigate(['/dashboard']);
   }
 }

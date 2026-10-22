@@ -231,4 +231,33 @@ describe('AuthService', () => {
       expect(service.tenant()).toEqual({ ...tenantRow, name: 'Gym' });
     });
   });
+
+  describe('password recovery', () => {
+    it('requestPasswordReset returns null on success and the message on failure', async () => {
+      setup(null);
+      auth['resetPasswordForEmail'] = vi.fn().mockResolvedValue({ error: null });
+      expect(await service.requestPasswordReset('a@b.c')).toBeNull();
+      expect(auth['resetPasswordForEmail']).toHaveBeenCalledWith('a@b.c');
+
+      auth['resetPasswordForEmail'].mockResolvedValue({
+        error: { name: 'AuthApiError', status: 429, message: 'email rate limit exceeded' },
+      });
+      expect(await service.requestPasswordReset('a@b.c')).toBe('email rate limit exceeded');
+    });
+
+    it('verifyRecoveryToken exchanges the token hash as a recovery OTP', async () => {
+      setup(null);
+      auth['verifyOtp'] = vi.fn().mockResolvedValue({ error: null });
+      expect(await service.verifyRecoveryToken('abc')).toBeNull();
+      expect(auth['verifyOtp']).toHaveBeenCalledWith({ token_hash: 'abc', type: 'recovery' });
+    });
+
+    it('verifyRecoveryToken returns the error for a spent or expired token', async () => {
+      setup(null);
+      auth['verifyOtp'] = vi.fn().mockResolvedValue({
+        error: { name: 'AuthApiError', status: 403, message: 'Email link is invalid or has expired' },
+      });
+      expect(await service.verifyRecoveryToken('abc')).toBe('Email link is invalid or has expired');
+    });
+  });
 });
