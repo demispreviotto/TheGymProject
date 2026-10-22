@@ -23,20 +23,12 @@ import type { Planning } from '../../../../core/planning/planning.types';
           <h1 class="text-xl font-semibold" [attr.aria-level]="embedded() ? 2 : null">{{ 'planning.title' | translate }}</h1>
           <p class="text-sm text-neutral-400 mt-0.5">{{ service.plannings().length }} {{ 'planning.subtitle' | translate }}</p>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <button
-            (click)="router.navigate(['/trainer/programs'])"
-            class="whitespace-nowrap px-3 py-2 rounded-md border border-neutral-700 text-neutral-200 text-sm font-medium hover:bg-neutral-800 transition-colors"
-          >
-            {{ 'program.title' | translate }}
-          </button>
-          <button
-            (click)="router.navigate(['/trainer/planning/new'])"
-            class="whitespace-nowrap px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
-          >
-            {{ 'planning.new' | translate }}
-          </button>
-        </div>
+        <button
+          (click)="router.navigate(['/trainer/planning/new'])"
+          class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-md bg-neutral-100 text-neutral-950 text-sm font-medium hover:bg-white transition-colors"
+        >
+          {{ 'planning.new' | translate }}
+        </button>
       </div>
 
       @if (service.loading()) {

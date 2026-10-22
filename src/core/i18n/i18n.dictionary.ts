@@ -201,7 +201,7 @@ export const dictionary = {
   'program.share.friends':         { en: 'Share with friends',                es: 'Compartir con amigos' },
   'program.shared.title':          { en: 'Shared by friends',                 es: 'Compartidos por amigos' },
   'program.by':                    { en: 'By',                                es: 'De' },
-  'program.back':                  { en: 'Back to plans',                     es: 'Volver a planes' },
+  'myplan.programs.title':         { en: 'My Programs',                        es: 'Mis Programas' },
   'myplan.planning.title':         { en: 'My Plans',                           es: 'Mis Planes' },
   'myplan.planning.empty.hint':    { en: 'Create your first plan to get started.', es: 'Crea tu primer plan para comenzar.' },
   'myplan.exercises.title':        { en: 'My Exercises',                       es: 'Mis Ejercicios' },

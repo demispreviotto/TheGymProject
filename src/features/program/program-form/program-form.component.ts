@@ -7,6 +7,7 @@ import { ProgramService } from '../../../core/program/program.service';
 import { clampWeeks, movePhase, newPhase, totalWeeks } from '../../../core/program/program-draft';
 import type { PhaseDraft } from '../../../core/program/program.types';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { StepperComponent } from '../../../shared/components/stepper/stepper.component';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 
 /** Create or edit a program: a name and an ordered list of phases (a plan repeated for N weeks). */
@@ -14,7 +15,7 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
   selector: 'app-program-form',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, AppIconComponent],
+  imports: [FormsModule, TranslatePipe, AppIconComponent, StepperComponent],
   template: `
     <div class="max-w-2xl space-y-5">
       <button (click)="back()" class="text-sm text-neutral-400 hover:text-neutral-200 transition-colors">
@@ -60,7 +61,7 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
               </div>
             </div>
 
-            <div class="grid grid-cols-[1fr_6rem] gap-3">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem]">
               <div class="space-y-1">
                 <label class="text-xs text-neutral-500">{{ 'program.phase.plan' | translate }}</label>
                 <select
@@ -74,16 +75,13 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
                   }
                 </select>
               </div>
-              <div class="space-y-1">
-                <label class="text-xs text-neutral-500">{{ 'program.phase.weeks' | translate }}</label>
-                <input
-                  type="number" inputmode="numeric" min="1" max="52"
-                  [ngModel]="phase.repeat_count"
-                  (ngModelChange)="setWeeks(i, $event)"
-                  class="w-full bg-neutral-950 border border-neutral-700 rounded px-2 py-1.5 text-sm text-neutral-100
-                         focus:outline-none focus:border-neutral-500"
-                />
-              </div>
+              <app-stepper
+                [label]="'program.phase.weeks' | translate"
+                [value]="phase.repeat_count"
+                [step]="1"
+                [min]="1"
+                (valueChange)="setWeeks(i, $event)"
+              />
             </div>
           </div>
         }
@@ -174,8 +172,8 @@ export class ProgramFormComponent implements OnInit {
     this.phases.update(list => list.map((p, i) => (i === index ? { ...p, planning_id: planningId } : p)));
   }
 
-  setWeeks(index: number, value: number): void {
-    this.phases.update(list => list.map((p, i) => (i === index ? { ...p, repeat_count: clampWeeks(value) } : p)));
+  setWeeks(index: number, value: number | null): void {
+    this.phases.update(list => list.map((p, i) => (i === index ? { ...p, repeat_count: clampWeeks(value ?? 1) } : p)));
   }
 
   async save(): Promise<void> {
@@ -196,6 +194,7 @@ export class ProgramFormComponent implements OnInit {
   }
 
   back(): void {
-    this.router.navigate(['../'], { relativeTo: this.route });
+    const home = this.auth.profile()?.role === 'trainer' ? '/trainer' : '/my-plan';
+    this.router.navigate([home], { queryParams: { view: 'programs' } });
   }
 }
