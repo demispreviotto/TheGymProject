@@ -92,10 +92,22 @@ describe('WorkoutService', () => {
       tables['workout_sessions'] = createQueryMock({ data: { id: 's1' }, error: null });
       tables['workout_logs'] = createQueryMock({ error: null });
 
-      await service.saveSession('u1', 'p1', 4, 4, logs, 2);
+      await service.saveSession('u1', 'p1', 4, 4, logs, { dayPosition: 2 });
 
       expect(tables['workout_sessions']['insert']).toHaveBeenCalledWith({
         user_id: 'u1', planning_id: 'p1', day_number: 4, subjective_score: 4, day_position: 2,
+      });
+    });
+
+    it('stores the program context when following a program', async () => {
+      tables['workout_sessions'] = createQueryMock({ data: { id: 's1' }, error: null });
+      tables['workout_logs'] = createQueryMock({ error: null });
+
+      await service.saveSession('u1', 'p1', 1, 3, logs, { userProgramId: 'up1', phaseId: 'ph1', cycleIndex: 3 });
+
+      expect(tables['workout_sessions']['insert']).toHaveBeenCalledWith({
+        user_id: 'u1', planning_id: 'p1', day_number: 1, subjective_score: 3,
+        user_program_id: 'up1', phase_id: 'ph1', cycle_index: 3,
       });
     });
 

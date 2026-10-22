@@ -34,6 +34,13 @@ export interface PhaseSchedule {
   days: readonly number[];
 }
 
+export interface ActiveProgram {
+  userProgram: UserProgram;
+  program: Program;
+  phases: PhaseSchedule[];
+  completedWorkouts: number;
+}
+
 export interface ProgramPosition {
   /** Phase the next workout belongs to; null once the program is finished. */
   phase: PhaseSchedule | null;

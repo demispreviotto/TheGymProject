@@ -5,8 +5,11 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-import { WorkoutService, WorkoutPlanFull, LogPayload } from '../../../core/workout/workout.service';
+import { WorkoutService, WorkoutPlanFull, LogPayload, SessionContext } from '../../../core/workout/workout.service';
 import { PlanningService } from '../../../core/planning/planning.service';
+import { ProgramService } from '../../../core/program/program.service';
+import { resolvePosition } from '../../../core/program/program-position';
+import type { ActiveProgram, ProgramPosition } from '../../../core/program/program.types';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
@@ -195,10 +198,15 @@ export class WorkoutDashboardComponent implements OnInit {
   readonly timerService = inject(CountdownTimerService);
   readonly clock = inject(SessionClock);
   private readonly drafts = inject(WorkoutDraftService);
+  private readonly programs = inject(ProgramService);
 
   readonly loading = signal(true);
   readonly plan = signal<WorkoutPlanFull | null>(null);
   readonly activeDay = signal(1);
+  /** Plan being trained now: the current program phase's plan, else the plan assigned directly. */
+  readonly currentPlanId = signal<string | null>(null);
+  readonly activeProgram = signal<ActiveProgram | null>(null);
+  readonly programPosition = signal<ProgramPosition | null>(null);
   readonly rows = signal<WorkoutRowState[]>([]);
   readonly finishDrawerOpen = signal(false);
   readonly subjectiveScore = signal(0);
@@ -315,7 +323,7 @@ export class WorkoutDashboardComponent implements OnInit {
 
   async confirmFinish(): Promise<void> {
     const profile = this.auth.profile();
-    const planId = this.assignedPlanId();
+    const planId = this.currentPlanId();
     if (!profile || !planId) return;
 
     this.saving.set(true);
@@ -358,7 +366,7 @@ export class WorkoutDashboardComponent implements OnInit {
       this.activeDay(),
       this.subjectiveScore(),
       logs,
-      this.dayPos().position,
+      this.sessionContext(),
     );
 
     this.saving.set(false);
@@ -408,9 +416,36 @@ export class WorkoutDashboardComponent implements OnInit {
     this.persistDraft();
   }
 
+  /** Snapshot stored with the session: day slot, plus program/phase/week when following one. */
+  private sessionContext(): SessionContext {
+    const active = this.activeProgram();
+    const position = this.programPosition();
+    return {
+      dayPosition: this.dayPos().position,
+      ...(active && position?.phase && {
+        userProgramId: active.userProgram.id,
+        phaseId: position.phase.id,
+        cycleIndex: position.cycleIndex,
+      }),
+    };
+  }
+
+  /** The program the user follows decides the plan and day; without one, the directly assigned plan does. */
+  private async resolveSource(userId: string): Promise<{ planId: string | null; position: ProgramPosition | null }> {
+    const active = await this.programs.loadActive(userId);
+    this.activeProgram.set(active);
+    if (active) {
+      const position = resolvePosition(active.phases, active.completedWorkouts);
+      if (position.phase) return { planId: position.phase.planning_id, position };
+      await this.programs.complete(active.userProgram.id);
+      this.activeProgram.set(null);
+    }
+    return { planId: this.assignedPlanId(), position: null };
+  }
+
   private currentDraftKey(): string | null {
     const userId = this.auth.profile()?.id;
-    const planId = this.assignedPlanId();
+    const planId = this.currentPlanId();
     return userId && planId ? draftKey(userId, planId, this.activeDay()) : null;
   }
 
@@ -451,8 +486,12 @@ export class WorkoutDashboardComponent implements OnInit {
     this.manualOpenId.set(null);
     this.clock.reset();
 
-    const planId = this.assignedPlanId();
     const profile = this.auth.profile();
+    const { planId, position } = profile
+      ? await this.resolveSource(profile.id)
+      : { planId: null, position: null };
+    this.programPosition.set(position);
+    this.currentPlanId.set(planId);
     if (!planId || !profile) {
       this.loading.set(false);
       return;
@@ -469,7 +508,7 @@ export class WorkoutDashboardComponent implements OnInit {
     }
 
     const availableDays = planFull.planning_days.map(d => d.day_number);
-    const activeDay = this.workoutService.resolveActiveDay(lastSession, availableDays);
+    const activeDay = position?.dayNumber ?? this.workoutService.resolveActiveDay(lastSession, availableDays);
     const dayData = planFull.planning_days.find(d => d.day_number === activeDay);
     const sorted = [...(dayData?.prescribed_exercises ?? [])].sort(
       (a, b) => a.sorting_order - b.sorting_order,

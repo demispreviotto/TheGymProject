@@ -22,6 +22,14 @@ export interface WorkoutPlanFull {
   planning_days: WorkoutPlanDay[];
 }
 
+/** Where a session sits: the plan day, and the program/phase/week when one is being followed. */
+export interface SessionContext {
+  dayPosition?: number;
+  userProgramId?: string;
+  phaseId?: string;
+  cycleIndex?: number;
+}
+
 export interface LogPayload {
   exercise_id: string;
   round_number: number;
@@ -100,7 +108,7 @@ export class WorkoutService {
     dayNumber: number,
     subjectiveScore: number,
     logs: LogPayload[],
-    dayPosition?: number,
+    context: SessionContext = {},
   ): Promise<string | null> {
     const { data: session, error: sessErr } = await this.supabase
       .from('workout_sessions')
@@ -109,7 +117,10 @@ export class WorkoutService {
         planning_id: planningId,
         day_number: dayNumber,
         subjective_score: subjectiveScore,
-        ...(dayPosition !== undefined && { day_position: dayPosition }),
+        ...(context.dayPosition !== undefined && { day_position: context.dayPosition }),
+        ...(context.userProgramId !== undefined && { user_program_id: context.userProgramId }),
+        ...(context.phaseId !== undefined && { phase_id: context.phaseId }),
+        ...(context.cycleIndex !== undefined && { cycle_index: context.cycleIndex }),
       })
       .select()
       .single();
