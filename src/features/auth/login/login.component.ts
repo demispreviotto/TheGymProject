@@ -1,5 +1,6 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 
@@ -7,7 +8,7 @@ import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
   selector: 'app-login',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, AppIconComponent],
+  imports: [FormsModule, RouterLink, AppIconComponent],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {

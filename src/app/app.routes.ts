@@ -18,6 +18,16 @@ export const routes: Routes = [
       import('../features/auth/accept-invite/accept-invite.component').then(m => m.AcceptInviteComponent),
   },
   {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('../features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
+  },
+  {
+    path: 'auth/confirm',
+    loadComponent: () =>
+      import('../features/auth/confirm-recovery/confirm-recovery.component').then(m => m.ConfirmRecoveryComponent),
+  },
+  {
     path: 'reset-password',
     loadComponent: () =>
       import('../features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),

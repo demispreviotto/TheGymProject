@@ -69,6 +69,24 @@ export class AuthService {
     return null;
   }
 
+  /**
+   * Sends the recovery email. Supabase answers success for unknown addresses too, so the
+   * caller can show one neutral message without revealing which emails are registered.
+   */
+  async requestPasswordReset(email: string): Promise<string | null> {
+    const { error } = await this.supabase.auth.resetPasswordForEmail(email);
+    return error ? this.describeError(error) : null;
+  }
+
+  /**
+   * Exchanges the recovery token from the email link for a session. Called from a button
+   * click, never on page load, so a mail scanner that only fetches the link can't use it up.
+   */
+  async verifyRecoveryToken(tokenHash: string): Promise<string | null> {
+    const { error } = await this.supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    return error ? this.describeError(error) : null;
+  }
+
   async signOut(): Promise<void> {
     await this.supabase.auth.signOut();
     this.profile.set(null);
