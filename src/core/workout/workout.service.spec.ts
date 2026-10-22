@@ -88,6 +88,29 @@ describe('WorkoutService', () => {
       );
     });
 
+    it('stores the day position snapshot when given', async () => {
+      tables['workout_sessions'] = createQueryMock({ data: { id: 's1' }, error: null });
+      tables['workout_logs'] = createQueryMock({ error: null });
+
+      await service.saveSession('u1', 'p1', 4, 4, logs, { dayPosition: 2 });
+
+      expect(tables['workout_sessions']['insert']).toHaveBeenCalledWith({
+        user_id: 'u1', planning_id: 'p1', day_number: 4, subjective_score: 4, day_position: 2,
+      });
+    });
+
+    it('stores the program context when following a program', async () => {
+      tables['workout_sessions'] = createQueryMock({ data: { id: 's1' }, error: null });
+      tables['workout_logs'] = createQueryMock({ error: null });
+
+      await service.saveSession('u1', 'p1', 1, 3, logs, { userProgramId: 'up1', phaseId: 'ph1', cycleIndex: 3 });
+
+      expect(tables['workout_sessions']['insert']).toHaveBeenCalledWith({
+        user_id: 'u1', planning_id: 'p1', day_number: 1, subjective_score: 3,
+        user_program_id: 'up1', phase_id: 'ph1', cycle_index: 3,
+      });
+    });
+
     it('returns the session error and skips inserting logs', async () => {
       tables['workout_sessions'] = createQueryMock({ data: null, error: { message: 'boom' } });
       tables['workout_logs'] = createQueryMock({ error: null });
@@ -115,11 +138,31 @@ describe('WorkoutService', () => {
 
     it('filters completed logs of the exercise across recent sessions', async () => {
       tables['workout_sessions'] = createQueryMock({ data: [{ id: 's1' }, { id: 's2' }] });
-      tables['workout_logs'] = createQueryMock({ data: { id: 'l1' } });
+      tables['workout_logs'] = createQueryMock({ data: [{ id: 'l1', session_id: 's1', round_number: 1 }] });
 
-      expect(await service.loadLastLog('u1', 'e1')).toEqual({ id: 'l1' } as WorkoutLog);
+      expect(await service.loadLastLog('u1', 'e1')).toMatchObject({ id: 'l1' });
       expect(tables['workout_logs']['in']).toHaveBeenCalledWith('session_id', ['s1', 's2']);
       expect(tables['workout_logs']['eq']).toHaveBeenCalledWith('is_completed', true);
+    });
+
+    it('prefers the newest session, whatever order the logs arrive in', async () => {
+      tables['workout_sessions'] = createQueryMock({ data: [{ id: 'new' }, { id: 'old' }] });
+      tables['workout_logs'] = createQueryMock({
+        data: [
+          { id: 'o1', session_id: 'old', round_number: 3 },
+          { id: 'n1', session_id: 'new', round_number: 1 },
+          { id: 'n2', session_id: 'new', round_number: 2 },
+        ],
+      });
+
+      expect(await service.loadLastLog('u1', 'e1')).toMatchObject({ id: 'n2' });
+    });
+
+    it('returns null when no recent session has a completed log of the exercise', async () => {
+      tables['workout_sessions'] = createQueryMock({ data: [{ id: 's1' }] });
+      tables['workout_logs'] = createQueryMock({ data: [] });
+
+      expect(await service.loadLastLog('u1', 'e1')).toBeNull();
     });
   });
 });

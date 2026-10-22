@@ -30,7 +30,7 @@ const TRAINER_LIBRARY: NavItem = {
   icon: 'strategy',
   labelKey: 'nav.myplan.library',
   tabKey: 'tab.plans',
-  activeFor: ['/trainer/exercises', '/trainer/planning'],
+  activeFor: ['/trainer/exercises', '/trainer/planning', '/trainer/programs'],
 };
 const TRAINER_CLIENTS: NavItem = { route: '/trainer/clients', icon: 'users', labelKey: 'nav.clients', tabKey: 'tab.clients' };
 
@@ -41,7 +41,7 @@ const MY_LIBRARY: NavItem = {
   icon: 'strategy',
   labelKey: 'nav.myplan.library',
   tabKey: 'tab.plans',
-  activeFor: ['/my-plan/planning', '/my-plan/exercises'],
+  activeFor: ['/my-plan/planning', '/my-plan/exercises', '/my-plan/programs'],
 };
 const MY_FRIENDS: NavItem = { route: '/my-plan/friends', icon: 'users', labelKey: 'nav.myplan.friends', tabKey: 'tab.friends' };
 

@@ -58,6 +58,18 @@ export const routes: Routes = [
           // Plans and exercises now share one page; keep the old URLs (and the forms' "back") working.
           { path: 'exercises', pathMatch: 'full', redirectTo: '' },
           { path: 'planning', pathMatch: 'full', redirectTo: '' },
+          // Programs are a panel of the library page now; keep the old URL working.
+          { path: 'programs', pathMatch: 'full', redirectTo: '' },
+          {
+            path: 'programs/new',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
+          {
+            path: 'programs/:id',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
           {
             path: 'exercises/new',
             loadComponent: () =>
@@ -132,6 +144,18 @@ export const routes: Routes = [
           // Plans and exercises now share one page; keep the old URLs (and the forms' "back") working.
           { path: 'planning', pathMatch: 'full', redirectTo: '' },
           { path: 'exercises', pathMatch: 'full', redirectTo: '' },
+          // Programs are a panel of the library page now; keep the old URL working.
+          { path: 'programs', pathMatch: 'full', redirectTo: '' },
+          {
+            path: 'programs/new',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
+          {
+            path: 'programs/:id',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
           {
             path: 'planning/new',
             loadComponent: () =>

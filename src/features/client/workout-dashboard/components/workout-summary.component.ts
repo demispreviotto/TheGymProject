@@ -4,6 +4,11 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../../shared/ui/icons/app-icon.component';
 import { formatDuration } from '../../../../shared/utils/format';
 import type { DayPosition } from '../../../../core/workout/workout-stats';
+import type { PositionLabel } from '../../../../core/program/program.types';
+
+export interface ProgramInfo extends PositionLabel {
+  title: string;
+}
 
 /** Progress card at the top of the workout: plan, day, completion bar and session volume. */
 @Component({
@@ -26,6 +31,14 @@ import type { DayPosition } from '../../../../core/workout/workout-stats';
               {{ 'dashboard.of' | translate }} {{ dayPosition().total }}
             </span>
           </div>
+          @if (program(); as p) {
+            <p class="mt-0.5 truncate text-xs text-neutral-400">
+              {{ p.title }} · {{ 'program.week' | translate }} {{ p.weekNumber }} {{ 'program.of' | translate }} {{ p.totalWeeks }}
+              @if (p.phaseCount > 1) {
+                · {{ 'program.phase' | translate }} {{ p.phaseIndex }}/{{ p.phaseCount }}
+              }
+            </p>
+          }
           <h2 class="mt-0.5 line-clamp-2 break-words text-xl font-semibold leading-tight tracking-tight text-neutral-100">{{ title() }}</h2>
         </div>
 
@@ -95,6 +108,8 @@ export class WorkoutSummaryComponent {
   readonly percent = input.required<number>();
   readonly volume = input.required<number>();
   readonly durationSeconds = input.required<number>();
+  /** Set while following a program: its name and where the user is in it. */
+  readonly program = input<ProgramInfo | null>(null);
 
   readonly isDone = computed(() => this.total() > 0 && this.completed() >= this.total());
   readonly durationLabel = computed(() => formatDuration(this.durationSeconds()));

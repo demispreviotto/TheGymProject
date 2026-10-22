@@ -52,6 +52,7 @@ export interface WorkoutSession {
   user_id: string;
   planning_id: string;
   day_number: number;
+  day_position: number | null;
   completed_at: string;
   subjective_score: number | null;
 }
@@ -64,4 +65,6 @@ export interface WorkoutLog {
   weight_used: number;
   reps_performed: number;
   is_completed: boolean;
+  target_reps: number | null;
+  target_rounds: number | null;
 }

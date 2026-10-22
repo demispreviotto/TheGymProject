@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 export interface QueryResult {
   data?: unknown;
+  count?: number | null;
   error?: { message: string; code?: string } | null;
 }
 

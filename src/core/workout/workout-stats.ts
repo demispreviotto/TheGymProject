@@ -49,6 +49,17 @@ export function currentRound(row: WorkoutRowState): number {
   return row.roundsDone.indexOf(false);
 }
 
+export type RoundStatus = 'done' | 'current' | 'upcoming';
+
+/**
+ * How a round is shown in granular / failure mode: finished rounds collapse to one line, only the
+ * current one gets the full weight / reps entry, and the rest wait as a one-liner.
+ */
+export function roundStatus(row: WorkoutRowState, round: number): RoundStatus {
+  if (row.roundsDone[round]) return 'done';
+  return round === currentRound(row) ? 'current' : 'upcoming';
+}
+
 /** Index of the last round that is done, or -1 when none is. */
 export function lastDoneRound(row: WorkoutRowState): number {
   return row.roundsDone.lastIndexOf(true);

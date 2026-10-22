@@ -1,4 +1,4 @@
-import { DEFAULT_PANEL_LAYOUT, effectiveLayout, isPanelHidden, panelGridClass } from './snap-panels.layout';
+import { DEFAULT_PANEL_LAYOUT, effectiveLayout, isPanelHidden, layoutFromView, panelGridClass } from './snap-panels.layout';
 
 describe('snap-panels layout', () => {
   describe('effectiveLayout', () => {
@@ -52,5 +52,33 @@ describe('snap-panels layout', () => {
     expect(isPanelHidden('first', 'second')).toBe(true);
     expect(isPanelHidden('second', 'second')).toBe(false);
     expect(isPanelHidden('second', 'first')).toBe(true);
+  });
+
+  describe('three panels', () => {
+    it('gives the whole height to one of three panels', () => {
+      expect(panelGridClass('first', 3)).toContain('grid-rows-[1fr_0fr_0fr]');
+      expect(panelGridClass('second', 3)).toContain('grid-rows-[0fr_1fr_0fr]');
+      expect(panelGridClass('third', 3)).toContain('grid-rows-[0fr_0fr_1fr]');
+    });
+
+    it('hides the other two while one is full', () => {
+      expect(isPanelHidden('third', 'third')).toBe(false);
+      expect(isPanelHidden('third', 'first')).toBe(true);
+      expect(isPanelHidden('third', 'second')).toBe(true);
+    });
+  });
+
+  describe('layoutFromView', () => {
+    it('maps the view names to panels', () => {
+      expect(layoutFromView('programs')).toBe('first');
+      expect(layoutFromView('plans')).toBe('second');
+      expect(layoutFromView('exercises')).toBe('third');
+    });
+
+    it('defaults to plans for a missing or unknown view', () => {
+      expect(layoutFromView(null)).toBe('second');
+      expect(layoutFromView('nope')).toBe('second');
+      expect(layoutFromView('constructor')).toBe('second');
+    });
   });
 });
