@@ -8,7 +8,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { WorkoutService, WorkoutPlanFull, LogPayload, SessionContext } from '../../../core/workout/workout.service';
 import { PlanningService } from '../../../core/planning/planning.service';
 import { ProgramService } from '../../../core/program/program.service';
-import { resolvePosition } from '../../../core/program/program-position';
+import { describePosition, resolvePosition } from '../../../core/program/program-position';
 import type { ActiveProgram, ProgramPosition } from '../../../core/program/program.types';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
@@ -25,7 +25,7 @@ import { SessionClock } from '../../../core/workout/session-clock';
 import { applyDraft, draftKey, toDraft } from '../../../core/workout/workout-draft';
 import { WorkoutDraftService } from '../../../core/workout/workout-draft.service';
 import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
-import { WorkoutSummaryComponent } from './components/workout-summary.component';
+import { ProgramInfo, WorkoutSummaryComponent } from './components/workout-summary.component';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -114,6 +114,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
             [percent]="progress()"
             [volume]="volume()"
             [durationSeconds]="clock.elapsedSeconds()"
+            [program]="programInfo()"
           />
 
           @for (row of rows(); track row.prescribed.id; let i = $index) {
@@ -235,6 +236,13 @@ export class WorkoutDashboardComponent implements OnInit {
   readonly completedRows = computed(() => completedCount(this.rows()));
   readonly progress = computed(() => progressPercent(this.completedRows(), this.rows().length));
   readonly volume = computed(() => sessionVolume(this.rows()));
+  /** Program name plus week/phase while following one; null on a directly assigned plan. */
+  readonly programInfo = computed<ProgramInfo | null>(() => {
+    const active = this.activeProgram();
+    const position = this.programPosition();
+    const label = active && position ? describePosition(active.phases, position) : null;
+    return active && label ? { title: active.program.title, ...label } : null;
+  });
   readonly dayPos = computed(() =>
     dayPosition(this.plan()?.planning_days.map(d => d.day_number) ?? [], this.activeDay()),
   );

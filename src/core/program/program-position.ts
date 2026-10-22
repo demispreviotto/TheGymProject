@@ -1,4 +1,4 @@
-import type { PhaseSchedule, ProgramPosition } from './program.types';
+import type { PhaseSchedule, PositionLabel, ProgramPosition } from './program.types';
 
 const sortedDays = (phase: PhaseSchedule): number[] =>
   [...new Set(phase.days)].sort((a, b) => a - b);
@@ -50,5 +50,28 @@ export function resolvePosition(
     completedWorkouts: Math.min(done, total),
     totalWorkouts: total,
     isFinished: true,
+  };
+}
+
+/**
+ * "Week 3 of 5, phase 1 of 2" for a position, or null once the program is finished.
+ * Phases whose plan has no days are skipped, matching resolvePosition.
+ */
+export function describePosition(
+  phases: readonly PhaseSchedule[],
+  position: ProgramPosition,
+): PositionLabel | null {
+  if (!position.phase) return null;
+  const playable = [...phases]
+    .sort((a, b) => a.position - b.position)
+    .filter(p => workoutsIn(p) > 0);
+  const index = playable.findIndex(p => p.id === position.phase?.id);
+  if (index === -1) return null;
+  const weeksBefore = playable.slice(0, index).reduce((sum, p) => sum + p.repeat_count, 0);
+  return {
+    weekNumber: weeksBefore + position.cycleIndex,
+    totalWeeks: playable.reduce((sum, p) => sum + p.repeat_count, 0),
+    phaseIndex: index + 1,
+    phaseCount: playable.length,
   };
 }

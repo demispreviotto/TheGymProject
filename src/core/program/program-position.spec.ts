@@ -1,4 +1,4 @@
-import { resolvePosition, totalWorkouts } from './program-position';
+import { describePosition, resolvePosition, totalWorkouts } from './program-position';
 import type { PhaseSchedule } from './program.types';
 
 const phase = (position: number, repeat: number, days: number[]): PhaseSchedule => ({
@@ -79,5 +79,35 @@ describe('resolvePosition', () => {
     const input = [program[1], program[0]];
     resolvePosition(input, 5);
     expect(input[0].id).toBe('ph2');
+  });
+});
+
+describe('describePosition', () => {
+  it('counts weeks across phases', () => {
+    // workout 12 is the first of the deload phase: week 5 of 5, phase 2 of 2
+    expect(describePosition(program, resolvePosition(program, 12))).toEqual({
+      weekNumber: 5, totalWeeks: 5, phaseIndex: 2, phaseCount: 2,
+    });
+  });
+
+  it('starts at week 1 of the first phase', () => {
+    expect(describePosition(program, resolvePosition(program, 0))).toEqual({
+      weekNumber: 1, totalWeeks: 5, phaseIndex: 1, phaseCount: 2,
+    });
+  });
+
+  it('moves to the next week after finishing a week of workouts', () => {
+    expect(describePosition(program, resolvePosition(program, 3))?.weekNumber).toBe(2);
+  });
+
+  it('ignores phases without days in the numbering', () => {
+    const phases = [phase(1, 2, []), phase(2, 3, [1])];
+    expect(describePosition(phases, resolvePosition(phases, 0))).toEqual({
+      weekNumber: 1, totalWeeks: 3, phaseIndex: 1, phaseCount: 1,
+    });
+  });
+
+  it('is null once the program is finished', () => {
+    expect(describePosition(program, resolvePosition(program, 14))).toBeNull();
   });
 });

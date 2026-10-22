@@ -47,6 +47,14 @@ export interface ActiveProgram {
   completedWorkouts: number;
 }
 
+/** Where the user is, in words a person would say: week 3 of 5, phase 1 of 2. */
+export interface PositionLabel {
+  weekNumber: number;
+  totalWeeks: number;
+  phaseIndex: number;
+  phaseCount: number;
+}
+
 export interface ProgramPosition {
   /** Phase the next workout belongs to; null once the program is finished. */
   phase: PhaseSchedule | null;
