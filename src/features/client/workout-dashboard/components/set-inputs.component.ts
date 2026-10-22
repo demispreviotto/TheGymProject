@@ -14,8 +14,8 @@ const CURRENT_ROUND = 'space-y-2 rounded-xl bg-neutral-800/50 p-2 ring-1 ring-te
 /**
  * Weight / reps entry for one exercise. Standard mode shows a single pair that applies to every
  * round, with one progress dot per round. Granular and failure modes show only the current
- * round as full inputs; finished rounds are a one-line summary with an Edit button, and the rest wait
- * as a dim line. Purely presentational: edits are emitted as InputChange,
+ * round as full inputs; finished rounds are a one-line summary (their Edit button is parked, see the
+ * template), and the rest wait as a dim line. Purely presentational: edits are emitted as InputChange,
  * a request to reopen a round as `undoRound`, and the parent owns the state.
  */
 @Component({
@@ -107,6 +107,7 @@ const CURRENT_ROUND = 'space-y-2 rounded-xl bg-neutral-800/50 p-2 ring-1 ring-te
                   <span class="font-semibold text-neutral-200">{{ 'dashboard.round' | translate }} {{ r + 1 }}</span>
                   · {{ input.weight ?? 0 }} kg × {{ input.reps ?? 0 }}
                 </p>
+                <!-- Parked for a later phase: re-editing a finished round.
                 <button
                   type="button"
                   (click)="undoRound.emit(r)"
@@ -116,6 +117,7 @@ const CURRENT_ROUND = 'space-y-2 rounded-xl bg-neutral-800/50 p-2 ring-1 ring-te
                   <app-icon name="pencil" iconClass="w-4 h-4" />
                   {{ 'common.edit' | translate }}
                 </button>
+                -->
               </div>
             }
             @default {
