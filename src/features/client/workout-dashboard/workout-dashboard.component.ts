@@ -45,7 +45,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
           }
         </div>
 
-      } @else if (!assignedPlanId()) {
+      } @else if (!currentPlanId()) {
         <div class="flex flex-col items-center py-12 text-center gap-4">
           <div class="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center">
             <app-icon name="bolt" iconClass="w-8 h-8 text-neutral-500" />

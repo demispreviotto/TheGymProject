@@ -33,6 +33,10 @@ import { IconButtonComponent } from '../../../shared/ui/button/icon-button.compo
         </button>
       </div>
 
+      @if (deleteFailed()) {
+        <p class="text-sm text-red-400" role="alert">{{ 'program.err.delete' | translate }}</p>
+      }
+
       @if (loading()) {
         <p class="text-sm text-neutral-500">{{ 'common.loading' | translate }}</p>
       } @else if (programs().length === 0) {
@@ -95,6 +99,7 @@ export class ProgramListComponent implements OnInit {
   readonly programs = signal<Program[]>([]);
   readonly phases = signal<ProgramPhase[]>([]);
   readonly followingId = signal<string | null>(null);
+  readonly deleteFailed = signal(false);
 
   readonly basePath = computed(() => (this.auth.profile()?.role === 'trainer' ? '/trainer' : '/my-plan'));
 
@@ -119,7 +124,9 @@ export class ProgramListComponent implements OnInit {
 
   async remove(program: Program): Promise<void> {
     if (!confirm(`${program.title}: ${this.language.t('program.delete.confirm')}`)) return;
-    if ((await this.service.remove(program.id)) === null) await this.reload();
+    const error = await this.service.remove(program.id);
+    this.deleteFailed.set(error !== null);
+    if (error === null) await this.reload();
   }
 
   private phasesOf(programId: string): ProgramPhase[] {

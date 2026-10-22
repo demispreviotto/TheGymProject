@@ -194,6 +194,7 @@ export const dictionary = {
   'program.err.phases':            { en: 'Add at least one phase.',           es: 'Agrega al menos una fase.' },
   'program.err.noplans':           { en: 'Create a plan first: phases are made of plans.', es: 'Crea un plan primero: las fases se arman con planes.' },
   'program.delete.confirm':        { en: 'Delete this program?',              es: '¿Eliminar este programa?' },
+  'program.err.delete':            { en: 'This program is being followed, so it cannot be deleted.', es: 'Este programa está siendo seguido, por lo que no se puede eliminar.' },
   'program.back':                  { en: 'Back to plans',                     es: 'Volver a planes' },
   'myplan.planning.title':         { en: 'My Plans',                           es: 'Mis Planes' },
   'myplan.planning.empty.hint':    { en: 'Create your first plan to get started.', es: 'Crea tu primer plan para comenzar.' },
