@@ -348,6 +348,8 @@ The old URLs redirect, and the forms (`/my-plan/planning/new`, `/my-plan/plannin
 - `workout_sessions`: nullable `program_id`, `phase_id`, `cycle_index`, `day_position`
 - `workout_logs`: nullable `target_reps`, `target_rounds` (snapshot of the prescription)
 
+**Progress (branch `feat/programs`, no PR until complete)**: steps 1–5 done; step 6 (contract) is deferred. Deviation from the schema above: sessions reference `user_program_id` (the assignment) instead of `program_id`, because the position is counted per assignment, and a re-followed program starts again at zero. Not yet exercised against a real database (migrations were only checked by CI); the program builder UI has not been walked through in a browser. Not built yet: trainer assigning a program to a client, sharing toggle UI for programs, showing "week N of M" on the dashboard.
+
 **Steps**: (1) fix `loadLastLog` ordering + snapshot columns → (2) tables + RLS → (3) `resolvePosition` + tests → (4) dashboard uses the active program, else `assigned_planning_id` → (5) program builder UI + label renames → (6) contract.
 
 > ⚠️ **Open issue — history vs. live edits (revisit with the data-analysis feature).**

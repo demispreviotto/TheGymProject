@@ -71,6 +71,44 @@ describe('ProgramService', () => {
     });
   });
 
+  describe('create / update', () => {
+    const phases = [
+      { planning_id: 'pl1', repeat_count: 4 },
+      { planning_id: 'pl2', repeat_count: 1 },
+    ];
+
+    it('creates the program then its phases in order', async () => {
+      tables['programs'] = createQueryMock({ data: { id: 'pr1' }, error: null });
+      tables['program_phases'] = createQueryMock({ error: null });
+
+      expect(await service.create('u1', 'Cut', phases)).toBeNull();
+      expect(tables['programs']['insert']).toHaveBeenCalledWith({ owner_id: 'u1', title: 'Cut' });
+      expect(tables['program_phases']['insert']).toHaveBeenCalledWith([
+        { program_id: 'pr1', planning_id: 'pl1', repeat_count: 4, position: 1 },
+        { program_id: 'pr1', planning_id: 'pl2', repeat_count: 1, position: 2 },
+      ]);
+    });
+
+    it('does not insert phases when the program insert fails', async () => {
+      tables['programs'] = createQueryMock({ data: null, error: { message: 'denied' } });
+      tables['program_phases'] = createQueryMock({ error: null });
+
+      expect(await service.create('u1', 'Cut', phases)).toBe('denied');
+      expect(tables['program_phases']['insert']).not.toHaveBeenCalled();
+    });
+
+    it('update renames, replaces the phases and renumbers them', async () => {
+      tables['programs'] = createQueryMock({ error: null });
+      tables['program_phases'] = createQueryMock({ error: null });
+
+      expect(await service.update('pr1', 'Bulk', phases)).toBeNull();
+      expect(tables['programs']['update']).toHaveBeenCalledWith({ title: 'Bulk' });
+      expect(tables['program_phases']['delete']).toHaveBeenCalled();
+      expect(tables['program_phases']['eq']).toHaveBeenCalledWith('program_id', 'pr1');
+      expect(tables['program_phases']['insert']).toHaveBeenCalled();
+    });
+  });
+
   it('complete marks the assignment completed', async () => {
     tables['user_programs'] = createQueryMock({ error: null });
 

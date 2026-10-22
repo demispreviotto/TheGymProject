@@ -111,6 +111,22 @@ export const routes: Routes = [
           // Requests and users now share the admin page; keep the old URLs working.
           { path: 'requests', pathMatch: 'full', redirectTo: '' },
           { path: 'users', pathMatch: 'full', redirectTo: '' },
+          {
+            path: 'programs',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('../features/program/program-list/program-list.component').then(m => m.ProgramListComponent),
+          },
+          {
+            path: 'programs/new',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
+          {
+            path: 'programs/:id',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
         ],
       },
       {
@@ -132,6 +148,22 @@ export const routes: Routes = [
           // Plans and exercises now share one page; keep the old URLs (and the forms' "back") working.
           { path: 'planning', pathMatch: 'full', redirectTo: '' },
           { path: 'exercises', pathMatch: 'full', redirectTo: '' },
+          {
+            path: 'programs',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('../features/program/program-list/program-list.component').then(m => m.ProgramListComponent),
+          },
+          {
+            path: 'programs/new',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
+          {
+            path: 'programs/:id',
+            loadComponent: () =>
+              import('../features/program/program-form/program-form.component').then(m => m.ProgramFormComponent),
+          },
           {
             path: 'planning/new',
             loadComponent: () =>

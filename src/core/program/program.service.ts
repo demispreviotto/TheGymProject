@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import type {
-  ActiveProgram, PhaseSchedule, Program, ProgramPhase, UserProgram,
+  ActiveProgram, PhaseDraft, PhaseSchedule, Program, ProgramPhase, UserProgram,
 } from './program.types';
 
 interface PhaseRow extends ProgramPhase {
@@ -68,6 +68,76 @@ export class ProgramService {
     const { error } = await this.supabase
       .from('user_programs')
       .insert({ user_id: userId, program_id: programId });
+    return error?.message ?? null;
+  }
+
+  /** Programs the user built (RLS also shows gym-shared ones, so filter by owner). */
+  async loadMine(ownerId: string): Promise<Program[]> {
+    const { data } = await this.supabase
+      .from('programs')
+      .select('*')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: false });
+    return (data as Program[] | null) ?? [];
+  }
+
+  async loadPhases(programIds: readonly string[]): Promise<ProgramPhase[]> {
+    if (!programIds.length) return [];
+    const { data } = await this.supabase
+      .from('program_phases')
+      .select('*')
+      .in('program_id', programIds)
+      .order('position');
+    return (data as ProgramPhase[] | null) ?? [];
+  }
+
+  async loadOne(programId: string): Promise<{ program: Program; phases: ProgramPhase[] } | null> {
+    const { data } = await this.supabase.from('programs').select('*').eq('id', programId).maybeSingle();
+    if (!data) return null;
+    return { program: data as Program, phases: await this.loadPhases([programId]) };
+  }
+
+  async create(ownerId: string, title: string, phases: readonly PhaseDraft[]): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('programs')
+      .insert({ owner_id: ownerId, title })
+      .select('id')
+      .single();
+    if (error) return error.message;
+    return this.insertPhases((data as { id: string }).id, phases);
+  }
+
+  async update(programId: string, title: string, phases: readonly PhaseDraft[]): Promise<string | null> {
+    const { error } = await this.supabase.from('programs').update({ title }).eq('id', programId);
+    if (error) return error.message;
+    const { error: delErr } = await this.supabase.from('program_phases').delete().eq('program_id', programId);
+    if (delErr) return delErr.message;
+    return this.insertPhases(programId, phases);
+  }
+
+  async remove(programId: string): Promise<string | null> {
+    const { error } = await this.supabase.from('programs').delete().eq('id', programId);
+    return error?.message ?? null;
+  }
+
+  async setSharedWithFriends(programId: string, shared: boolean): Promise<string | null> {
+    const { error } = await this.supabase
+      .from('programs')
+      .update({ is_shared_with_friends: shared })
+      .eq('id', programId);
+    return error?.message ?? null;
+  }
+
+  private async insertPhases(programId: string, phases: readonly PhaseDraft[]): Promise<string | null> {
+    if (!phases.length) return null;
+    const { error } = await this.supabase.from('program_phases').insert(
+      phases.map((p, index) => ({
+        program_id: programId,
+        planning_id: p.planning_id,
+        repeat_count: p.repeat_count,
+        position: index + 1,
+      })),
+    );
     return error?.message ?? null;
   }
 

@@ -15,6 +15,12 @@ export interface ProgramPhase {
   repeat_count: number;
 }
 
+/** A phase as edited in the builder: which plan, repeated how many weeks. */
+export interface PhaseDraft {
+  planning_id: string;
+  repeat_count: number;
+}
+
 export type UserProgramStatus = 'active' | 'completed' | 'abandoned';
 
 export interface UserProgram {

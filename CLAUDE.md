@@ -303,6 +303,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `20260921154818_performance_indexes.sql` | Indexes on `profiles.tenant_id`/`tenant_ref_id`, `plannings.tenant_id`, `workout_sessions(user_id, planning_id, completed_at)`, `friendships.requester_id`/`addressee_id`, `invite_requests.status` |
 | `20260921160530_restrict_role_self_update.sql` | Replaces `"profiles: update own"` so a user can update their own row but not their own `role` column (blocks self-escalation via RLS) |
 | `20261005120000_push_notifications.sql` | `push_subscriptions` table + RLS; `send_push()` (pg_net → `send-push` edge function, secrets in Vault); triggers `friendships_push` and `invite_requests_push` |
+| `20261022120000_workout_snapshots.sql` | `workout_logs.target_reps`/`target_rounds` and `workout_sessions.day_position` (snapshot of the prescription; nullable) |
+| `20261022130000_programs.sql` | `programs`, `program_phases` (plan + repeat weeks, ordered), `user_programs` (one active per user); `workout_sessions.user_program_id`/`phase_id`/`cycle_index`; `can_read_program()` helpers and read policies so followers can read the plans inside a program |
 | `20261021120000_invite_request_limit.sql` | `invite_request_limit()` (=2) + `invite_requests_limit` trigger: at most 2 `pending`/`approved` requests per requester (advisory-locked per requester; re-opening a rejected one also counts); raises SQLSTATE `IR001` |
 
 ### Core (`src/core/`)
@@ -327,6 +329,9 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `workout/session-clock.ts` | `SessionClock`: elapsed workout time (`elapsedSeconds`, `startedAt`), started by the first user action (`start(from?)` can resume from a saved start), derived from the wall clock. Provided per dashboard (`providers: [SessionClock]`), not a root singleton; its interval is cleared on destroy |
 | `workout/workout-draft.ts` | Pure draft logic for the workout in progress: `draftKey(user, plan, day)`, `toDraft`, `applyDraft` (overlays saved inputs/rounds only when the shape still matches the loaded plan), `parseDraft` (validates untrusted storage), `isDraftStale` (12 h) |
 | `workout/workout-draft.service.ts` | `WorkoutDraftService` (root): `load` / `save` / `clear` / `pruneStale` over localStorage; every call is safe when storage is blocked or full. The dashboard saves after every change (`updateRow`), restores in `loadWorkout` and clears the draft once the session is saved, so progress survives leaving the page, a reload or closing the app |
+| `program/program.service.ts` | `loadActive` (followed program + phases + sessions logged), `follow`, `complete`, builder CRUD (`loadMine`, `loadOne`, `create`, `update`, `remove`, `setSharedWithFriends`) |
+| `program/program-position.ts` | Pure `resolvePosition(phases, completedWorkouts)`: completion-based position (phase, week, day) in a program; `totalWorkouts` |
+| `program/program-draft.ts` | Pure builder helpers: `movePhase`, `clampWeeks`, `newPhase`, `totalWeeks` |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
 | `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `extend(seconds)` (the +30s button), `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
 | `push/push-notification.service.ts` | `isSupported`, `isSubscribed` signals; `enable()` requests a `SwPush` subscription (VAPID key in `push/push.config.ts`) and upserts it into `push_subscriptions` |
@@ -358,6 +363,8 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `trainer/planning/planning-form/planning-form.component.ts` | `/trainer/planning/new` · `/trainer/planning/:id` · `/my-plan/planning/new` · `/my-plan/planning/:id` | trainer · free · admin — supports read-only view mode for non-owned plans (`isReadOnly` signal gated by `tenant_id !== auth.uid()`) |
 | `trainer/clients/client-roster/client-roster.component.ts` | `/trainer/clients` | trainer |
 | `trainer/clients/client-detail-sheet/client-detail-sheet.component.ts` | *(sheet, no route)* | trainer |
+| `program/program-list/program-list.component.ts` | `/my-plan/programs` · `/trainer/programs` | trainer · free · admin — own programs, Follow, delete |
+| `program/program-form/program-form.component.ts` | `…/programs/new` · `…/programs/:id` | trainer · free · admin — name + ordered phases (plan × weeks) |
 | `auth/register/register.component.ts` | `/register` | public (invite link) |
 | `admin/admin-page/admin-page.component.ts` | `/admin` (`/admin/requests` and `/admin/users` redirect here) | admin — invite requests and users on one page, switched between one at a time (snap panels with `allowSplit` off, Requests by default) |
 | `admin/invite-requests/admin-invite-requests.component.ts` | *(panel of `/admin`)* | admin — `embedded` input makes its header sticky inside the panel |
