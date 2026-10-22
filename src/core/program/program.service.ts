@@ -98,6 +98,25 @@ export class ProgramService {
     return (data as Program[] | null) ?? [];
   }
 
+  /** Programs friends shared with the user (RLS already limits this to accepted friends). */
+  async loadSharedByFriends(userId: string): Promise<Program[]> {
+    const { data } = await this.supabase
+      .from('programs')
+      .select('*')
+      .eq('is_shared_with_friends', true)
+      .neq('owner_id', userId)
+      .order('created_at', { ascending: false });
+    return (data as Program[] | null) ?? [];
+  }
+
+  async loadOwnerNames(ownerIds: readonly string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>();
+    if (!ownerIds.length) return names;
+    const { data } = await this.supabase.from('profiles').select('id, name').in('id', [...new Set(ownerIds)]);
+    for (const p of (data as { id: string; name: string }[] | null) ?? []) names.set(p.id, p.name);
+    return names;
+  }
+
   async loadPhases(programIds: readonly string[]): Promise<ProgramPhase[]> {
     if (!programIds.length) return [];
     const { data } = await this.supabase

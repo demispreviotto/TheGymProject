@@ -109,6 +109,22 @@ describe('ProgramService', () => {
     });
   });
 
+  it('loadSharedByFriends asks for friend-shared programs of other owners', async () => {
+    tables['programs'] = createQueryMock({ data: [{ id: 'pr9' }] });
+
+    expect(await service.loadSharedByFriends('u1')).toEqual([{ id: 'pr9' }]);
+    expect(tables['programs']['eq']).toHaveBeenCalledWith('is_shared_with_friends', true);
+    expect(tables['programs']['neq']).toHaveBeenCalledWith('owner_id', 'u1');
+  });
+
+  it('loadOwnerNames maps ids to names and skips the query when empty', async () => {
+    tables['profiles'] = createQueryMock({ data: [{ id: 'a', name: 'Ana' }] });
+
+    expect((await service.loadOwnerNames(['a', 'a'])).get('a')).toBe('Ana');
+    expect((await service.loadOwnerNames([])).size).toBe(0);
+    expect(tables['profiles']['in']).toHaveBeenCalledTimes(1);
+  });
+
   it('stop sets the active program aside', async () => {
     tables['user_programs'] = createQueryMock({ error: null });
 

@@ -8,13 +8,14 @@ import type { Program, ProgramPhase } from '../../../core/program/program.types'
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { IconButtonComponent } from '../../../shared/ui/button/icon-button.component';
+import { ToggleComponent } from '../../../shared/components/toggle/toggle.component';
 
 /** Programs the user built, with a one-tap "Follow" that makes the dashboard train from one. */
 @Component({
   selector: 'app-program-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, EmptyStateComponent, IconButtonComponent],
+  imports: [TranslatePipe, EmptyStateComponent, IconButtonComponent, ToggleComponent],
   template: `
     <div class="space-y-4">
       <button (click)="router.navigate([basePath()])" class="text-sm text-neutral-400 hover:text-neutral-200 transition-colors">
@@ -54,6 +55,12 @@ import { IconButtonComponent } from '../../../shared/ui/button/icon-button.compo
                   {{ phaseCount(program.id) }} {{ 'program.phases.count' | translate }}
                   · {{ weeks(program.id) }} {{ 'program.weeks' | translate }}
                 </p>
+                @if (canShare()) {
+                  <div class="mt-1.5 flex items-center gap-2" (click)="$event.stopPropagation()">
+                    <app-toggle [active]="program.is_shared_with_friends" (changed)="setShared(program, $event)" />
+                    <span class="text-xs text-neutral-400">{{ 'program.share.friends' | translate }}</span>
+                  </div>
+                }
               </div>
               <div class="flex items-center gap-1 flex-shrink-0" (click)="$event.stopPropagation()">
                 @if (followingId() === program.id) {
@@ -86,6 +93,40 @@ import { IconButtonComponent } from '../../../shared/ui/button/icon-button.compo
           }
         </div>
       }
+
+      @if (shared().length > 0) {
+        <h2 class="pt-2 text-sm font-medium text-neutral-200">{{ 'program.shared.title' | translate }}</h2>
+        <div class="rounded-lg border border-neutral-800 overflow-hidden">
+          @for (program of shared(); track program.id) {
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-neutral-800 last:border-0">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-neutral-100 truncate">{{ program.title }}</p>
+                <p class="text-xs text-neutral-500 mt-0.5">
+                  {{ 'program.by' | translate }} {{ ownerName(program) }}
+                  · {{ phaseCount(program.id) }} {{ 'program.phases.count' | translate }}
+                  · {{ weeks(program.id) }} {{ 'program.weeks' | translate }}
+                </p>
+              </div>
+              @if (followingId() === program.id) {
+                <span class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded
+                             bg-[hsl(var(--tenant-primary))]/15 text-[hsl(var(--tenant-primary))]">
+                  {{ 'program.following' | translate }}
+                </span>
+              } @else {
+                <app-icon-button
+                  icon="check"
+                  [label]="'program.follow' | translate"
+                  labelMode="responsive"
+                  variant="ghost"
+                  size="sm"
+                  [disabled]="phaseCount(program.id) === 0"
+                  (click)="follow(program)"
+                />
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
   `,
 })
@@ -100,12 +141,26 @@ export class ProgramListComponent implements OnInit {
   readonly phases = signal<ProgramPhase[]>([]);
   readonly followingId = signal<string | null>(null);
   readonly deleteFailed = signal(false);
+  readonly shared = signal<Program[]>([]);
+  readonly ownerNames = signal<Map<string, string>>(new Map());
+
+  /** Friends exist only for free and admin accounts, so only they can share (a trainer's clients get programs assigned). */
+  readonly canShare = computed(() => this.auth.profile()?.role !== 'trainer');
 
   readonly basePath = computed(() => (this.auth.profile()?.role === 'trainer' ? '/trainer' : '/my-plan'));
 
   async ngOnInit(): Promise<void> {
     await this.reload();
     this.loading.set(false);
+  }
+
+  ownerName(program: Program): string {
+    return this.ownerNames().get(program.owner_id) ?? '…';
+  }
+
+  async setShared(program: Program, shared: boolean): Promise<void> {
+    if ((await this.service.setSharedWithFriends(program.id, shared)) !== null) return;
+    this.programs.update(list => list.map(p => (p.id === program.id ? { ...p, is_shared_with_friends: shared } : p)));
   }
 
   phaseCount(programId: string): number {
@@ -142,6 +197,9 @@ export class ProgramListComponent implements OnInit {
     ]);
     this.programs.set(programs);
     this.followingId.set(active?.program.id ?? null);
-    this.phases.set(await this.service.loadPhases(programs.map(p => p.id)));
+    const shared = this.canShare() ? await this.service.loadSharedByFriends(userId) : [];
+    this.shared.set(shared);
+    this.ownerNames.set(await this.service.loadOwnerNames(shared.map(p => p.owner_id)));
+    this.phases.set(await this.service.loadPhases([...programs, ...shared].map(p => p.id)));
   }
 }
