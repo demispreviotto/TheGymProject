@@ -28,6 +28,9 @@ export interface LogPayload {
   weight_used: number;
   reps_performed: number;
   is_completed: boolean;
+  /** Prescription at logging time, so later plan edits do not change what this log meant. */
+  target_reps?: number;
+  target_rounds?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -75,16 +78,20 @@ export class WorkoutService {
     if (!sessions?.length) return null;
     const sessionIds = (sessions as { id: string }[]).map(s => s.id);
 
+    // Logs come back unordered across sessions: keep the newest session's last completed round.
     const { data } = await this.supabase
       .from('workout_logs')
       .select('*')
       .in('session_id', sessionIds)
       .eq('exercise_id', exerciseId)
-      .eq('is_completed', true)
-      .limit(1)
-      .maybeSingle();
+      .eq('is_completed', true);
 
-    return (data as WorkoutLog) ?? null;
+    const logs = (data as WorkoutLog[] | null) ?? [];
+    for (const id of sessionIds) {
+      const inSession = logs.filter(l => l.session_id === id);
+      if (inSession.length) return inSession.reduce((a, b) => (b.round_number > a.round_number ? b : a));
+    }
+    return null;
   }
 
   async saveSession(
@@ -93,6 +100,7 @@ export class WorkoutService {
     dayNumber: number,
     subjectiveScore: number,
     logs: LogPayload[],
+    dayPosition?: number,
   ): Promise<string | null> {
     const { data: session, error: sessErr } = await this.supabase
       .from('workout_sessions')
@@ -101,6 +109,7 @@ export class WorkoutService {
         planning_id: planningId,
         day_number: dayNumber,
         subjective_score: subjectiveScore,
+        ...(dayPosition !== undefined && { day_position: dayPosition }),
       })
       .select()
       .single();

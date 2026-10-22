@@ -333,6 +333,8 @@ export class WorkoutDashboardComponent implements OnInit {
             weight_used: inp.weight ?? 0,
             reps_performed: inp.reps ?? p.target_reps,
             is_completed: row.roundsDone[r - 1] ?? false,
+            target_reps: p.target_reps,
+            target_rounds: p.rounds,
           });
         }
       } else {
@@ -343,6 +345,8 @@ export class WorkoutDashboardComponent implements OnInit {
             weight_used: inp.weight ?? 0,
             reps_performed: inp.reps ?? p.target_reps,
             is_completed: row.roundsDone[idx] ?? false,
+            target_reps: p.target_reps,
+            target_rounds: p.rounds,
           });
         });
       }
@@ -354,6 +358,7 @@ export class WorkoutDashboardComponent implements OnInit {
       this.activeDay(),
       this.subjectiveScore(),
       logs,
+      this.dayPos().position,
     );
 
     this.saving.set(false);
