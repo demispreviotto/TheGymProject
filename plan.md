@@ -328,6 +328,34 @@ The old URLs redirect, and the forms (`/my-plan/planning/new`, `/my-plan/plannin
 
 ---
 
+## Phase 10: Programs (Loops & Concatenation)
+**Status: 🗺 Designed — not started**
+
+*Chain existing weekly plans into a multi-week program (e.g. 4 wks Hypertrophy → 1 wk Deload → 3 wks Strength). Expand-only: `plannings`, `planning_days`, `prescribed_exercises` and `workout_*` keep their names and shape.*
+
+**Hierarchy** — `Program → Phase (repeat N weeks) → Routine (a plannings row) → Workout (a day) → Exercise`. UI labels only; table names stay.
+
+**Decisions**
+- A routine is one week (days 1–7, the existing check stays). A 10-day cycle is two chained routines, not a longer one.
+- Position is **completion-based** (advance on finishing a workout, no calendar, no rest days) and **derived**: sessions logged for the assignment → pure `resolvePosition(program, sessionCount)` → (phase, repeat, day). No stored cursor.
+- Programs are **live references** (editing a program changes it for clients already in it). Plans and exercises with history are archived, not deleted.
+- The reusable day library (`day_routines`) is deferred.
+
+**Schema (expand)**
+- `programs(id, owner_id, title, is_shared_with_friends, is_shared_with_gym)`
+- `program_phases(id, program_id, planning_id, position, repeat_count)`
+- `user_programs(id, user_id, program_id, started_at, status)`; `profiles.assigned_planning_id` stays as fallback until a later contract step
+- `workout_sessions`: nullable `program_id`, `phase_id`, `cycle_index`, `day_position`
+- `workout_logs`: nullable `target_reps`, `target_rounds` (snapshot of the prescription)
+
+**Steps**: (1) fix `loadLastLog` ordering + snapshot columns → (2) tables + RLS → (3) `resolvePosition` + tests → (4) dashboard uses the active program, else `assigned_planning_id` → (5) program builder UI + label renames → (6) contract.
+
+> ⚠️ **Open issue — history vs. live edits (revisit with the data-analysis feature).**
+> Sessions store `planning_id` + `day_number`, so after a plan is edited (days removed/reordered) old sessions point at a different workout, and a client halfway through a program sees the remaining weeks change. Performance data stays intact (weights/reps live in `workout_logs`), but *what was prescribed* is only partly preserved by the snapshot columns. Options when analytics lands: freeze a snapshot of the program on assignment, or version plans (immutable revisions referenced by sessions).
+> Also known: `workout_sessions.planning_id` and `workout_logs.exercise_id` are plain FKs, so deleting a plan/exercise with history is blocked.
+
+---
+
 ## Phase 9: Corporate Gym & Organization Tier
 **Status: 🗺 Conceptual — not scheduled**
 
