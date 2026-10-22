@@ -60,13 +60,12 @@ const STATE_ICON_BASE = 'flex h-9 w-9 flex-shrink-0 items-center justify-center 
               </div>
               <button
                 type="button"
-                (click)="timerStart.emit()"
-                [disabled]="timerBusy()"
-                [attr.aria-label]="'dashboard.timer.start' | translate"
-                [title]="'dashboard.timer.start' | translate"
-                class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+                (click)="info.emit()"
+                [attr.aria-label]="'exercise.info' | translate"
+                [title]="'exercise.info' | translate"
+                class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100"
               >
-                <app-icon name="timer" iconClass="w-5 h-5 fill-current" />
+                <app-icon name="info" iconClass="w-5 h-5 fill-current" />
               </button>
             </div>
 
@@ -151,9 +150,6 @@ export class ExerciseCardComponent {
   readonly row = input.required<WorkoutRowState>();
   readonly expanded = input.required<boolean>();
   readonly usesAutoRm = input(false);
-  /** True while a rest timer is running: only one timer can run at a time. */
-  readonly timerBusy = input(false);
-
   /** The user tapped a collapsed card. */
   readonly expand = output<void>();
   readonly inputChange = output<InputChange>();
@@ -161,7 +157,8 @@ export class ExerciseCardComponent {
   readonly completeSet = output<void>();
   /** The user asked to reopen a finished round (by index). */
   readonly undoRound = output<number>();
-  readonly timerStart = output<void>();
+  /** The user wants to read about the exercise (definition, recommendations, muscles). */
+  readonly info = output<void>();
 
   readonly pendingClass = ACTION_PENDING;
   readonly doneClass = ACTION_DONE;

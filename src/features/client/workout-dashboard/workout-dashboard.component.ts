@@ -13,6 +13,7 @@ import type { ActiveProgram, ProgramPosition } from '../../../core/program/progr
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
+import type { Exercise } from '../../../core/planning/planning.types';
 import { CountdownTimerService } from '../../../core/timer/countdown-timer.service';
 import type {
   InputChange, RoundInput, RoundInputField, WorkoutRowState,
@@ -25,6 +26,7 @@ import { SessionClock } from '../../../core/workout/session-clock';
 import { applyDraft, draftKey, toDraft } from '../../../core/workout/workout-draft';
 import { WorkoutDraftService } from '../../../core/workout/workout-draft.service';
 import { ExerciseCardComponent, exerciseCardDomId } from './components/exercise-card.component';
+import { ExerciseInfoComponent } from './components/exercise-info.component';
 import { ProgramInfo, WorkoutSummaryComponent } from './components/workout-summary.component';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -33,7 +35,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
   selector: 'app-workout-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, AppIconComponent, ExerciseCardComponent, WorkoutSummaryComponent],
+  imports: [FormsModule, TranslatePipe, AppIconComponent, ExerciseCardComponent, ExerciseInfoComponent, WorkoutSummaryComponent],
   providers: [SessionClock],
   template: `
     <div class="max-w-lg mx-auto">
@@ -122,15 +124,16 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
               [row]="row"
               [expanded]="openId() === row.prescribed.id"
               [usesAutoRm]="usesAutoRm()"
-              [timerBusy]="timerService.isActive()"
               (expand)="openCard(row.prescribed.id)"
               (inputChange)="setInput(i, $event)"
               (completeSet)="completeSet(i)"
               (undoRound)="undoRound(i, $event)"
-              (timerStart)="startTimer(row.prescribed.rest_time_minutes)"
+              (info)="infoExercise.set(row.prescribed.exercise)"
             />
           }
         </div>
+
+        <app-exercise-info [exercise]="infoExercise()" (closed)="infoExercise.set(null)" />
 
         <div class="mt-6 pb-10">
           <button
@@ -207,6 +210,8 @@ export class WorkoutDashboardComponent implements OnInit {
   /** Plan being trained now: the current program phase's plan, else the plan assigned directly. */
   readonly currentPlanId = signal<string | null>(null);
   readonly activeProgram = signal<ActiveProgram | null>(null);
+  /** Exercise whose info overlay is open. */
+  readonly infoExercise = signal<Exercise | null>(null);
   readonly programPosition = signal<ProgramPosition | null>(null);
   readonly rows = signal<WorkoutRowState[]>([]);
   readonly finishDrawerOpen = signal(false);

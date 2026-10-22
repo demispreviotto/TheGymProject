@@ -111,7 +111,10 @@ export const dictionary = {
   'dashboard.allrounds':     { en: 'same for every round',   es: 'igual en todas las series' },
   'dashboard.suggested.auto': { en: 'Based on your last session', es: 'Según tu última sesión' },
   'dashboard.suggested.plan': { en: 'From your plan',        es: 'De tu plan' },
-  'dashboard.timer.start':   { en: 'Start rest timer',       es: 'Iniciar descanso' },
+  'exercise.info':           { en: 'Exercise info',          es: 'Info del ejercicio' },
+  'exercise.definition':     { en: 'Definition',             es: 'Definición' },
+  'exercise.recommendations': { en: 'Recommendations',       es: 'Recomendaciones' },
+  'exercise.info.empty':     { en: 'No description for this exercise yet.', es: 'Este ejercicio aún no tiene descripción.' },
 
   // Snap panels (two stacked, scrollable panels)
   'panels.both':             { en: 'Both',                   es: 'Ambos' },
