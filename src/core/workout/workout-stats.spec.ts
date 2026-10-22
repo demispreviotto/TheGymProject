@@ -13,6 +13,7 @@ import {
   lastDoneRound,
   progressPercent,
   roundCount,
+  roundStatus,
   sessionVolume,
   suggestionSource,
   topWeight,
@@ -269,5 +270,27 @@ describe('workout-stats', () => {
       expect(firstIncompleteId([makeRow({ id: 'a', done: true })])).toBeNull();
       expect(firstIncompleteId([])).toBeNull();
     });
+  });
+});
+
+describe('roundStatus', () => {
+  it('marks finished rounds done, the first open one current and the rest upcoming', () => {
+    const row = makeRow({ mode: 'granular', rounds: 4, done: [true, true, false, false] });
+    expect([0, 1, 2, 3].map(r => roundStatus(row, r))).toEqual(['done', 'done', 'current', 'upcoming']);
+  });
+
+  it('starts with the first round current', () => {
+    const row = makeRow({ mode: 'granular', rounds: 3 });
+    expect([0, 1, 2].map(r => roundStatus(row, r))).toEqual(['current', 'upcoming', 'upcoming']);
+  });
+
+  it('has no current round once everything is done', () => {
+    const row = makeRow({ mode: 'granular', rounds: 3, done: true });
+    expect([0, 1, 2].map(r => roundStatus(row, r))).toEqual(['done', 'done', 'done']);
+  });
+
+  it('makes a reopened round current again while later rounds stay done', () => {
+    const row = makeRow({ mode: 'failure', rounds: 3, done: [false, true, true] });
+    expect([0, 1, 2].map(r => roundStatus(row, r))).toEqual(['current', 'done', 'done']);
   });
 });

@@ -34,6 +34,7 @@ import { dragHandle } from './svg/drag-handle';
 import { envelope } from './svg/envelope';
 import { eye } from './svg/eye';
 import { eyeSlash } from './svg/eye-slash';
+import { info } from './svg/info';
 import { listNumbers } from './svg/list-numbers';
 import { lockClosed } from './svg/lock-closed';
 import { lockers } from './svg/lockers';
@@ -71,6 +72,7 @@ export const ICONS = {
   'envelope': envelope,
   'eye': eye,
   'eye-slash': eyeSlash,
+  'info': info,
   'list-numbers': listNumbers,
   'lock-closed': lockClosed,
   'lock-open': lockOpen,

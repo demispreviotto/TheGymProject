@@ -9,10 +9,12 @@ import {
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { PlanningService } from '../../../../core/planning/planning.service';
+import { ProgramService } from '../../../../core/program/program.service';
 import { HlmSheetComponent } from '../../../../shared/ui/sheet/hlm-sheet.component';
 import type { Profile } from '../../../../core/auth/auth.types';
-import type { Planning } from '../../../../core/planning/planning.types';
+import type { Program } from '../../../../core/program/program.types';
 import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
 
 @Component({
@@ -66,6 +68,26 @@ import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
             </select>
           </div>
 
+          <!-- Program assignment -->
+          <div>
+            <p class="text-xs text-neutral-500 mb-2">Assigned Program</p>
+            <select
+              name="assigned-program"
+              [value]="selectedProgramId()"
+              (change)="onProgramChange($event)"
+              [attr.disabled]="saving() ? '' : null"
+              class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
+            >
+              <option value="">— No program —</option>
+              @for (program of programs(); track program.id) {
+                <option [value]="program.id">{{ program.title }}</option>
+              }
+            </select>
+            <p class="text-xs text-neutral-500 mt-1.5">
+              While a program is assigned it decides the workout, and the plan above is not used.
+            </p>
+          </div>
+
           <!-- Active toggle -->
           <div class="flex items-center justify-between">
             <div>
@@ -95,6 +117,8 @@ import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
 export class ClientDetailSheetComponent implements OnChanges {
   private readonly planningService = inject(PlanningService);
   private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly programService = inject(ProgramService);
+  private readonly auth = inject(AuthService);
 
   readonly client = input<Profile | null>(null);
   readonly closed = output<void>();
@@ -103,6 +127,8 @@ export class ClientDetailSheetComponent implements OnChanges {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly selectedPlanId = signal('');
+  readonly selectedProgramId = signal('');
+  readonly programs = signal<Program[]>([]);
   readonly isActive = signal(true);
 
   readonly plannings = computed(() => this.planningService.plannings());
@@ -113,7 +139,39 @@ export class ClientDetailSheetComponent implements OnChanges {
       this.selectedPlanId.set(c?.assigned_planning_id ?? '');
       this.isActive.set(c?.is_active ?? true);
       this.error.set(null);
+      this.selectedProgramId.set('');
+      void this.loadPrograms(c);
     }
+  }
+
+  private async loadPrograms(client: Profile | null): Promise<void> {
+    const trainerId = this.auth.profile()?.id;
+    if (!client || !trainerId) return;
+    const [programs, activeId] = await Promise.all([
+      this.programService.loadMine(trainerId),
+      this.programService.loadActiveProgramId(client.id),
+    ]);
+    // The user may have switched client while this was loading.
+    if (this.client()?.id !== client.id) return;
+    this.programs.set(programs);
+    this.selectedProgramId.set(activeId ?? '');
+  }
+
+  async onProgramChange(event: Event): Promise<void> {
+    const programId = (event.target as HTMLSelectElement).value || null;
+    const clientId = this.client()?.id;
+    if (!clientId) return;
+    this.saving.set(true);
+    this.error.set(null);
+    const err = programId === null
+      ? await this.programService.stop(clientId)
+      : await this.programService.follow(clientId, programId);
+    if (err) this.error.set(err);
+    else {
+      this.selectedProgramId.set(programId ?? '');
+      this.updated.emit();
+    }
+    this.saving.set(false);
   }
 
   formatDate(iso: string): string {

@@ -9,9 +9,11 @@ const SEGMENT_BASE = 'flex h-10 min-w-0 items-center justify-center rounded-lg p
 const PANEL_BASE = 'min-h-0 overflow-hidden rounded-xl bg-neutral-950 ring-1 ring-neutral-800 transition-opacity duration-200 motion-reduce:transition-none';
 
 /**
- * Two stacked panels that fill the page height, each scrolling inside itself. A three-way switch
+ * Two (or three) stacked panels that fill the page height, each scrolling inside itself. A three-way switch
  * snaps between both panels at half height (the default), the first one full, or the second one
  * full. Set `[allowSplit]="false"` for a plain two-way switch that always shows a single panel.
+ * Give a `thirdLabel` for a third panel (`third` attribute); three panels are always one at a time,
+ * so also set `[allowSplit]="false"`.
  * Project the content with `first` and `second` attributes:
  *
  *   <app-snap-panels firstLabel="…" secondLabel="…">
@@ -73,6 +75,18 @@ const PANEL_BASE = 'min-h-0 overflow-hidden rounded-xl bg-neutral-950 ring-1 rin
             <ng-content select="[second]" />
           </div>
         </section>
+
+        @if (hasThird()) {
+          <section
+            [class]="panelClass('third')"
+            [attr.inert]="isHidden('third') ? '' : null"
+            [attr.aria-hidden]="isHidden('third') ? 'true' : null"
+          >
+            <div class="h-full overflow-y-auto overscroll-contain p-3 lg:p-4">
+              <ng-content select="[third]" />
+            </div>
+          </section>
+        }
       </div>
     </div>
   `,
@@ -82,6 +96,9 @@ export class SnapPanelsComponent {
 
   readonly firstLabel = input.required<string>();
   readonly secondLabel = input.required<string>();
+  /** Label of an optional third panel; without it the switch has two panels. */
+  readonly thirdLabel = input<string | null>(null);
+  readonly hasThird = computed(() => this.thirdLabel() !== null);
 
   /** Whether the half-and-half view is offered. Without it the switch has two options and one panel shows at a time. */
   readonly allowSplit = input(true, { transform: booleanAttribute });
@@ -95,13 +112,15 @@ export class SnapPanelsComponent {
   readonly options = computed<readonly { layout: PanelLayout; label: string }[]>(() => {
     const first = { layout: 'first' as const, label: this.firstLabel() };
     const second = { layout: 'second' as const, label: this.secondLabel() };
+    const third = this.thirdLabel();
+    if (third !== null) return [first, second, { layout: 'third' as const, label: third }];
     return this.allowSplit()
       ? [first, { layout: 'split' as const, label: this.lang.t('panels.both') }, second]
       : [first, second];
   });
 
-  readonly columnsClass = computed(() => (this.allowSplit() ? 'grid-cols-3' : 'grid-cols-2'));
-  readonly gridClass = computed(() => panelGridClass(this.current()));
+  readonly columnsClass = computed(() => (this.allowSplit() || this.hasThird() ? 'grid-cols-3' : 'grid-cols-2'));
+  readonly gridClass = computed(() => panelGridClass(this.current(), this.hasThird() ? 3 : 2));
 
   isHidden(slot: PanelSlot): boolean {
     return isPanelHidden(this.current(), slot);
