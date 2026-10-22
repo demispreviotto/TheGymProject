@@ -56,14 +56,31 @@ export class ProgramService {
     };
   }
 
-  /** Starts following a program; whatever the user followed before is set aside. Returns an error message. */
-  async follow(userId: string, programId: string): Promise<string | null> {
-    const { error: closeErr } = await this.supabase
+  /** Id of the program the user is following, without loading its phases. */
+  async loadActiveProgramId(userId: string): Promise<string | null> {
+    const { data } = await this.supabase
+      .from('user_programs')
+      .select('program_id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+    return (data as { program_id: string } | null)?.program_id ?? null;
+  }
+
+  /** Sets aside whatever program the user is following. Returns an error message. */
+  async stop(userId: string): Promise<string | null> {
+    const { error } = await this.supabase
       .from('user_programs')
       .update({ status: 'abandoned' })
       .eq('user_id', userId)
       .eq('status', 'active');
-    if (closeErr) return closeErr.message;
+    return error?.message ?? null;
+  }
+
+  /** Starts following a program (also how a trainer assigns one to a client); the previous one is set aside. */
+  async follow(userId: string, programId: string): Promise<string | null> {
+    const closeErr = await this.stop(userId);
+    if (closeErr) return closeErr;
 
     const { error } = await this.supabase
       .from('user_programs')

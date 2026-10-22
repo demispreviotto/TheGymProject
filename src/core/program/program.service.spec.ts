@@ -109,6 +109,22 @@ describe('ProgramService', () => {
     });
   });
 
+  it('stop sets the active program aside', async () => {
+    tables['user_programs'] = createQueryMock({ error: null });
+
+    expect(await service.stop('u1')).toBeNull();
+    expect(tables['user_programs']['update']).toHaveBeenCalledWith({ status: 'abandoned' });
+    expect(tables['user_programs']['eq']).toHaveBeenCalledWith('status', 'active');
+  });
+
+  it('loadActiveProgramId returns the followed program id or null', async () => {
+    tables['user_programs'] = createQueryMock({ data: { program_id: 'pr1' } });
+    expect(await service.loadActiveProgramId('u1')).toBe('pr1');
+
+    tables['user_programs'] = createQueryMock({ data: null });
+    expect(await service.loadActiveProgramId('u1')).toBeNull();
+  });
+
   it('complete marks the assignment completed', async () => {
     tables['user_programs'] = createQueryMock({ error: null });
 
