@@ -71,16 +71,17 @@ import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
           <!-- Program assignment -->
           <div>
             <p class="text-xs text-neutral-500 mb-2">Assigned Program</p>
+            <!-- Options load after the selection is known, so mark the chosen one on the option itself:
+                 a [value] on the select would be applied before the options exist. -->
             <select
               name="assigned-program"
-              [value]="selectedProgramId()"
               (change)="onProgramChange($event)"
               [attr.disabled]="saving() ? '' : null"
               class="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-neutral-500 disabled:opacity-40"
             >
-              <option value="">— No program —</option>
+              <option value="" [selected]="selectedProgramId() === ''">— No program —</option>
               @for (program of programs(); track program.id) {
-                <option [value]="program.id">{{ program.title }}</option>
+                <option [value]="program.id" [selected]="program.id === selectedProgramId()">{{ program.title }}</option>
               }
             </select>
             <p class="text-xs text-neutral-500 mt-1.5">

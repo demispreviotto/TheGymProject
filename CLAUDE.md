@@ -27,7 +27,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 **Flow:** branch off `dev` (`feat/*`, `fix/*`, `chore/*`, `docs/*`) → PR into `dev` → release PR `dev` → `main` ("Release: promote dev to main"). A merge to `main` deploys the frontend to Vercel; it does **not** run migrations. Database migrations and edge functions are deployed separately by hand, before the release merge when it contains migrations (see Hard Stops).
 
-**CI** (`.github/workflows/ci.yml`, on PRs to `dev`/`main`): production build, `pnpm check:csp`, `pnpm test:ci`, and a job that applies every migration to a fresh local Supabase stack. The repo only allows GitHub Actions pinned to a full commit SHA, so pin any new action (and keep the `# vX` comment). `scripts/generate-env.mjs` fails the build in CI/Vercel when `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing.
+**CI** (`.github/workflows/ci.yml`, on PRs to `dev`/`main`): production build, `pnpm check:csp`, `pnpm test:ci`, and a job that applies every migration to a fresh local Supabase stack (the Supabase CLI version is pinned in `ci.yml`; bump it deliberately, together with your local CLI). The repo only allows GitHub Actions pinned to a full commit SHA, so pin any new action (and keep the `# vX` comment). `scripts/generate-env.mjs` fails the build in CI/Vercel when `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing.
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
@@ -319,6 +319,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `exercises/exercise.service.ts` | `exercises` signal; `load`, `create`, `update`, `delete` |
 | `planning/planning.types.ts` | All domain types: `Exercise`, `Planning`, `PlanningDay`, `PrescribedExercise`, `WorkoutSession`, `WorkoutLog`, enums |
 | `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers`, `setShared`, `setSharedWithFriends`, `lookupSharedPlan` |
+| `clients/client.service.ts` | `loadForTrainer(trainerId)`: a trainer's clients, i.e. profiles whose `tenant_id` is the trainer's user id (not the `tenants` row id, which is `tenant_ref_id`); used by the roster |
 | `friendships/friendship.service.ts` | `friendships` signal; computed `friends`, `pendingReceived`, `pendingSent`; `load`, `sendRequest`, `accept`, `reject`, `cancel` |
 | `i18n/i18n.dictionary.ts` | Full EN/ES translation dictionary (70+ keys); `translate(key, lang)` pure function |
 | `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |

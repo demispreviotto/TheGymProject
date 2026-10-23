@@ -41,9 +41,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Pinned (not `latest`): resolving `latest` calls the GitHub API, which rate-limits and failed
+      # this job before it ran a single migration. Bump together with the CLI you use locally.
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
         with:
-          version: latest
+          version: 2.104.0
       # `supabase start` applies every migration + seed.sql from scratch on a
       # fresh database and fails if any file errors, so a broken migration is
       # caught before it can reach main.
