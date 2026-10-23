@@ -27,7 +27,7 @@ This file serves as the definitive single source of truth for the Gym Planificac
 
 **Flow:** branch off `dev` (`feat/*`, `fix/*`, `chore/*`, `docs/*`) → PR into `dev` → release PR `dev` → `main` ("Release: promote dev to main"). A merge to `main` deploys the frontend to Vercel; it does **not** run migrations. Database migrations and edge functions are deployed separately by hand, before the release merge when it contains migrations (see Hard Stops).
 
-**CI** (`.github/workflows/ci.yml`, on PRs to `dev`/`main`): production build, `pnpm check:csp`, `pnpm test:ci`, and a job that applies every migration to a fresh local Supabase stack. The repo only allows GitHub Actions pinned to a full commit SHA, so pin any new action (and keep the `# vX` comment). `scripts/generate-env.mjs` fails the build in CI/Vercel when `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing.
+**CI** (`.github/workflows/ci.yml`, on PRs to `dev`/`main`): production build, `pnpm check:csp`, `pnpm test:ci`, and a job that applies every migration to a fresh local Supabase stack (the Supabase CLI version is pinned in `ci.yml`; bump it deliberately, together with your local CLI). The repo only allows GitHub Actions pinned to a full commit SHA, so pin any new action (and keep the `# vX` comment). `scripts/generate-env.mjs` fails the build in CI/Vercel when `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing.
 
 **Local dev ports:** Kong API `54321` · DB `54322` · Studio `54323` · Mailpit `54324`
 
