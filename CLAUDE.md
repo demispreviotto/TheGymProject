@@ -319,6 +319,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `exercises/exercise.service.ts` | `exercises` signal; `load`, `create`, `update`, `delete` |
 | `planning/planning.types.ts` | All domain types: `Exercise`, `Planning`, `PlanningDay`, `PrescribedExercise`, `WorkoutSession`, `WorkoutLog`, enums |
 | `planning/planning.service.ts` | `plannings` signal; `loadPlannings`, `loadFull`, `create`, `update`, `delete`, `assignPlanning`, `loadTenantUsers`, `setShared`, `setSharedWithFriends`, `lookupSharedPlan` |
+| `clients/client.service.ts` | `loadForTrainer(trainerId)`: a trainer's clients, i.e. profiles whose `tenant_id` is the trainer's user id (not the `tenants` row id, which is `tenant_ref_id`); used by the roster |
 | `friendships/friendship.service.ts` | `friendships` signal; computed `friends`, `pendingReceived`, `pendingSent`; `load`, `sendRequest`, `accept`, `reject`, `cancel` |
 | `i18n/i18n.dictionary.ts` | Full EN/ES translation dictionary (70+ keys); `translate(key, lang)` pure function |
 | `i18n/language.service.ts` | `activeLanguage` signal; `initFromProfile`, `setLanguage` (persists to DB); `t(key)` helper |
