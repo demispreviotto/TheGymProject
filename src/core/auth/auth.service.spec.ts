@@ -260,4 +260,21 @@ describe('AuthService', () => {
       expect(await service.verifyRecoveryToken('abc')).toBe('Email link is invalid or has expired');
     });
   });
+
+  describe('invite links', () => {
+    it.each(['invite', 'magiclink'] as const)('verifyInviteToken exchanges the token hash as a %s OTP', async (type) => {
+      setup(null);
+      auth['verifyOtp'] = vi.fn().mockResolvedValue({ error: null });
+      expect(await service.verifyInviteToken('abc', type)).toBeNull();
+      expect(auth['verifyOtp']).toHaveBeenCalledWith({ token_hash: 'abc', type });
+    });
+
+    it('verifyInviteToken returns the error for a spent or expired token', async () => {
+      setup(null);
+      auth['verifyOtp'] = vi.fn().mockResolvedValue({
+        error: { name: 'AuthApiError', status: 403, message: 'Email link is invalid or has expired' },
+      });
+      expect(await service.verifyInviteToken('abc', 'invite')).toBe('Email link is invalid or has expired');
+    });
+  });
 });

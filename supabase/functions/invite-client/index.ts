@@ -15,6 +15,74 @@ function errorResponse(message: string, status: number, extra?: Record<string, u
   });
 }
 
+type AdminClient = ReturnType<typeof createClient>;
+type InviteLinkType = 'invite' | 'magiclink';
+
+interface Caller { id: string; role: string }
+interface ExistingProfile { id: string; role: string; tenant_id: string | null; is_active: boolean }
+
+/**
+ * The app page the invitee lands on. The one-time token only travels as `token_hash` and
+ * is spent by the button on /accept-invite (verifyOtp) -- never by a GET -- so link
+ * previews, scanners and a second tap in another browser can't use it up.
+ */
+function buildInviteLink(siteUrl: string, tokenHash: string, type: InviteLinkType): string {
+  return `${siteUrl}/accept-invite?token_hash=${encodeURIComponent(tokenHash)}&type=${type}`;
+}
+
+/** A trainer may re-invite their own pending client; an admin may re-invite anyone pending. */
+function canReinvite(caller: Caller, existing: ExistingProfile): boolean {
+  if (existing.is_active) return false;
+  if (caller.role === 'admin') return true;
+  return existing.role === 'user' && existing.tenant_id === caller.id;
+}
+
+/**
+ * Whether the account was ever used. `is_active = false` also covers a deactivated client
+ * who finished registering, and a fresh login link for one of those would let the inviter
+ * sign in as them. An account with logged workouts is therefore never re-invited.
+ */
+async function hasWorkoutHistory(admin: AdminClient, userId: string): Promise<boolean | null> {
+  const { count, error } = await admin
+    .from('workout_sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  return error ? null : (count ?? 0) > 0;
+}
+
+/**
+ * Issues a fresh link for a user created by an earlier invite. Someone who never opened the
+ * link is still unconfirmed and gets a new `invite`; someone who did (the token was spent,
+ * but they never set a password) is confirmed, and GoTrue only issues them a `magiclink`.
+ */
+async function reissueInvite(
+  admin: AdminClient, userId: string, email: string, siteUrl: string,
+): Promise<Response> {
+  const { data: authData, error: authErr } = await admin.auth.admin.getUserById(userId);
+  if (authErr || !authData.user) {
+    return errorResponse('Failed to load the invited user', 500);
+  }
+
+  const confirmed = !!authData.user.email_confirmed_at;
+  if (confirmed) {
+    const used = await hasWorkoutHistory(admin, userId);
+    if (used === null) return errorResponse('Failed to verify existing users', 500);
+    if (used) return errorResponse('A user with this email already exists', 409);
+  }
+
+  const type: InviteLinkType = confirmed ? 'magiclink' : 'invite';
+  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({ type, email });
+  if (linkErr) {
+    console.error('generateLink (re-invite) error:', linkErr.message);
+    return errorResponse(linkErr.message, 400);
+  }
+
+  const inviteLink = buildInviteLink(siteUrl, linkData.properties.hashed_token, type);
+  return new Response(JSON.stringify({ success: true, inviteLink, reinvited: true }), {
+    status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -69,7 +137,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Invalid email address', 400);
     }
 
-    // Reject duplicate invites/registrations. Querying `profiles.email` (populated by
+    // Duplicate invites/registrations. Querying `profiles.email` (populated by
     // handle_new_user at invite time, not just at registration) instead of
     // auth.admin.listUsers() -- listUsers() paginates (50/page by default) and would
     // silently miss matches once the tenant has more users than one page.
@@ -78,7 +146,7 @@ Deno.serve(async (req: Request) => {
     const escapedEmail = email.replace(/[%_]/g, (c) => `\\${c}`);
     const { data: existingProfile, error: existingErr } = await adminClient
       .from('profiles')
-      .select('id')
+      .select('id, role, tenant_id, is_active')
       .ilike('email', escapedEmail)
       .maybeSingle();
 
@@ -86,7 +154,12 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Failed to verify existing users', 500);
     }
     if (existingProfile) {
-      return errorResponse('A user with this email already exists', 409);
+      // The only duplicate that is not an error: an invited user who never finished
+      // registering, whose link expired or was already spent. Hand out a fresh one.
+      if (!canReinvite({ id: callerProfile.id, role: callerRole }, existingProfile)) {
+        return errorResponse('A user with this email already exists', 409);
+      }
+      return await reissueInvite(adminClient, existingProfile.id, email, siteUrl);
     }
 
     // Determine invite target role and tenant linkage
@@ -125,11 +198,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 1: Generate invite link (no email sent — admin shares the link manually)
-    console.log('calling generateLink for', email, '— redirectTo:', `${siteUrl}/register`);
+    console.log('calling generateLink for', email);
     const { data: linkData, error: inviteErr } = await adminClient.auth.admin.generateLink({
       type: 'invite',
       email,
-      options: { redirectTo: `${siteUrl}/register` },
     });
 
     if (inviteErr) {
@@ -138,10 +210,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const inviteData = { user: linkData.user };
-    // Wrap the raw Supabase link behind /accept-invite so messaging app link-preview
-    // fetches don't consume the one-time token before the user clicks.
-    const rawLink = linkData.properties.action_link;
-    const inviteLink = `${siteUrl}/accept-invite?link=${encodeURIComponent(rawLink)}`;
+    const inviteLink = buildInviteLink(siteUrl, linkData.properties.hashed_token, 'invite');
 
     // Step 2: Set app_metadata (server-controlled, not user-editable)
     await adminClient.auth.admin.updateUserById(inviteData.user.id, {
