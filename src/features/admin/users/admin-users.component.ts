@@ -119,7 +119,8 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
                 <tr class="border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30">
                   <td class="px-3 sm:px-4 py-3">
                     <p class="font-medium text-neutral-100">{{ user.name }}</p>
-                    @if (!user.is_active) {
+                    @if (pendingIds().has(user.id)) {
+                      <p class="mt-0.5 text-xs text-amber-400">{{ 'invite.pending' | translate }}</p>
                       <div class="mt-1.5"><app-resend-invite [email]="user.email" /></div>
                     }
                   </td>
@@ -163,6 +164,8 @@ export class AdminUsersComponent implements OnInit {
 
   readonly loading = signal(true);
   readonly users = signal<Profile[]>([]);
+  /** Users whose invitation was never accepted, whatever their `is_active` says. */
+  readonly pendingIds = signal<ReadonlySet<string>>(new Set());
   readonly actionError = signal<string | null>(null);
 
   readonly inviteFormOpen = signal(false);
@@ -181,11 +184,12 @@ export class AdminUsersComponent implements OnInit {
 
   private async loadUsers(): Promise<void> {
     this.loading.set(true);
-    const { data } = await this.supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data }, pending] = await Promise.all([
+      this.supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      this.invites.loadPendingIds(),
+    ]);
     this.users.set((data as Profile[]) ?? []);
+    this.pendingIds.set(pending);
     this.loading.set(false);
   }
 
