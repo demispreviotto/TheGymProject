@@ -2,9 +2,10 @@ import {
   Component, inject, signal, computed, OnInit, ChangeDetectionStrategy,
 } from '@angular/core';
 import { PlanningService } from '../../../../core/planning/planning.service';
-import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { ClientService } from '../../../../core/clients/client.service';
+import { InviteService } from '../../../../core/invites/invite.service';
+import { ResendInviteComponent } from '../../../invite/resend-invite/resend-invite.component';
 import { ClientDetailSheetComponent } from '../client-detail-sheet/client-detail-sheet.component';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
@@ -19,7 +20,10 @@ import type { Profile } from '../../../../core/auth/auth.types';
   selector: 'app-client-roster',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClientDetailSheetComponent, TranslatePipe, FormsModule, AppIconComponent, SkeletonComponent],
+  imports: [
+    ClientDetailSheetComponent, TranslatePipe, FormsModule, AppIconComponent, SkeletonComponent,
+    ResendInviteComponent,
+  ],
   template: `
     <div>
       <div class="flex items-center justify-between mb-6">
@@ -139,15 +143,18 @@ import type { Profile } from '../../../../core/auth/auth.types';
             @if (inactiveExpanded()) {
               <div class="border-t border-neutral-800">
                 @for (client of inactiveClients(); track client.id) {
-                  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
+                  <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
                        (click)="openSheet(client)">
-                    <div>
+                    <div class="min-w-0">
                       <p class="text-sm font-medium text-neutral-400">{{ client.name }}</p>
-                      <p class="text-xs text-neutral-600">{{ client.email }}</p>
+                      <p class="text-xs text-neutral-600 truncate">{{ client.email }}</p>
                     </div>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-500">
-                      {{ 'common.inactive' | translate }}
-                    </span>
+                    <div class="flex flex-shrink-0 items-center gap-2">
+                      <app-resend-invite [email]="client.email" />
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-500">
+                        {{ 'common.inactive' | translate }}
+                      </span>
+                    </div>
                   </div>
                 }
               </div>
@@ -166,9 +173,9 @@ import type { Profile } from '../../../../core/auth/auth.types';
 })
 export class ClientRosterComponent implements OnInit {
   private readonly planningService = inject(PlanningService);
-  private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly auth = inject(AuthService);
   private readonly clientService = inject(ClientService);
+  private readonly invites = inject(InviteService);
 
   readonly loading = signal(true);
   readonly clients = signal<Profile[]>([]);
@@ -219,12 +226,12 @@ export class ClientRosterComponent implements OnInit {
     }
     this.inviteState.set('sending');
     this.inviteMessage.set(null);
-    const { data, error } = await this.supabase.functions.invoke('invite-client', { body: { email } });
-    if (error) {
+    const outcome = await this.invites.createLink(email);
+    if (outcome.error) {
       this.inviteState.set('error');
-      this.inviteMessage.set(error.message ?? 'Failed to generate invite.');
+      this.inviteMessage.set(outcome.error);
     } else {
-      this.inviteLink = data?.inviteLink ?? null;
+      this.inviteLink = outcome.link;
       this.inviteStep.set('ready');
     }
   }

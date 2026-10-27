@@ -275,7 +275,7 @@ ON public.profiles FOR SELECT TO authenticated USING (true);
 ### Edge Functions (`supabase/functions/`)
 | File | Purpose |
 |------|---------|
-| `invite-client/index.ts` | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant |
+| `invite-client/index.ts` | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant. The returned link is `/accept-invite?token_hash=…&type=invite\|magiclink`: the token is spent by the page's button (`verifyOtp`), never by a GET. A duplicate that is inactive and never registered (the trainer's own client, or anyone for an admin) is **re-invited** with a fresh link (`magiclink` once the email was confirmed; refused if the account has workout history) instead of failing with 409 |
 | `send-push/index.ts` | Web Push delivery. Called by the DB `send_push()` function with an `x-push-secret` header; sends to a user's `push_subscriptions` and prunes endpoints that return 404/410 |
 
 ---
@@ -311,7 +311,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Purpose |
 |------|---------|
 | `auth/auth.types.ts` | `UserRole` type + `Profile` interface (full column set including `assigned_planning_id`, `is_active`) |
-| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` (only redirects to the role home from `/login` or `/`, and reads the **pending** navigation via `currentPath()`: on a reload the guards hold the initial navigation, so `router.url` is still `/`, and reading it threw the deep link away). `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
+| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` (only redirects to the role home from `/login` or `/`, and reads the **pending** navigation via `currentPath()`: on a reload the guards hold the initial navigation, so `router.url` is still `/`, and reading it threw the deep link away). `verifyInviteToken(tokenHash, type)` / `verifyRecoveryToken` exchange an emailed one-time token for a session and are only called from a button click. `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
 | `auth/auth-errors.ts` | `isServiceUnavailable(error)` — true for `AuthRetryableFetchError` or any 5xx; keeps raw gateway errors out of the UI |
 | `guards/role.guard.ts` | `authGuard` (any authenticated user) + `roleGuard(roles[])` — both async via `toObservable(isLoading)` |
 | `supabase/supabase.client.ts` | `SUPABASE_CLIENT` InjectionToken |
@@ -333,6 +333,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `program/program.service.ts` | `loadActive` (followed program + phases + sessions logged), `loadActiveProgramId`, `follow` (also how a trainer assigns to a client), `stop`, `complete`, builder CRUD (`loadMine`, `loadOne`, `create`, `update`, `remove`, `setSharedWithFriends`), `loadSharedByFriends`, `loadOwnerNames` |
 | `program/program-position.ts` | Pure `resolvePosition(phases, completedWorkouts)`: completion-based position (phase, week, day) in a program; `totalWorkouts`; `describePosition` ("week 3 of 5, phase 1 of 2" for the dashboard card) |
 | `program/program-draft.ts` | Pure builder helpers: `movePhase`, `clampWeeks`, `newPhase`, `totalWeeks` |
+| `invites/invite.service.ts` | `createLink(email, role?)` calls the `invite-client` edge function and returns `{ link, error, status }`; the edge function's own `{ error }` message is read from the response body (supabase-js hides it behind `context`). A pending invitee's email returns a fresh link (re-invite) |
 | `invite-requests/invite-request.service.ts` | `myRequests` + `loadMyRequests` (free users); `approvedCount`/`remainingInvites` computed; `submitRequest`; `allRequests` + `loadAllRequests` (admin); `approveRequest`; `rejectRequest` |
 | `timer/countdown-timer.service.ts` | Singleton rest timer: `secondsLeft`, `isFullscreen`, `isActive`, `isBlinking` signals; `start(seconds)`, `extend(seconds)` (the +30s button), `cancel()`, `toggle()`; one timer at a time; interval always cleared on cancel/complete |
 | `push/push-notification.service.ts` | `isSupported`, `isSubscribed` signals; `enable()` requests a `SwPush` subscription (VAPID key in `push/push.config.ts`) and upserts it into `push_subscriptions` |
@@ -375,6 +376,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `free/my-library/my-library-page.component.ts` | `/my-plan` (`/my-plan/planning`, `/my-plan/exercises` and `/my-plan/programs` redirect here) | free · admin — programs, plans and exercises on one page, switched between one at a time (three snap panels with `allowSplit` off: My Plans by default, no "Both" view; `?view=` as on the trainer page). The plan and exercise forms (`/my-plan/planning/new`, `/my-plan/planning/:id`, `/my-plan/exercises/new`) stay separate routes and their "back" lands on this page |
 | `free/my-planning-list/my-planning-list.component.ts` | *(panel of `/my-plan`)* | free · admin — shows owned plans (full controls) and friend-shared plans (read-only badge with owner name, "Set active" only); `embedded` input as above |
 | `free/my-friends/my-friends.component.ts` | `/my-plan/friends` | free · admin |
+| `invite/resend-invite/resend-invite.component.ts` | *(button in the inactive client list of `/trainer/clients` and in `/admin` users)* | trainer · admin — "Resend invite" for an inactive user: asks `InviteService` for a fresh link, then a second click shares it (two steps so the share sheet runs inside a user gesture). A 409 means the user already registered |
 | `profile/push-toggle/push-toggle.component.ts` | *(embedded in `/profile`)* | all — enables/disables push notifications via `PushNotificationService` |
 
 ### Shared UI (`src/shared/`)
