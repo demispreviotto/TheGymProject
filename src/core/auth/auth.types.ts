@@ -1,6 +1,16 @@
 export type UserRole = 'trainer' | 'user' | 'free' | 'admin';
 export type Language = 'en' | 'es';
 
+/**
+ * OTP type carried by an invite link. A first invite is `invite`; re-inviting someone who
+ * already confirmed their email but never finished registering needs a `magiclink`.
+ */
+export type InviteLinkType = 'invite' | 'magiclink';
+
+export function isInviteLinkType(value: string | null): value is InviteLinkType {
+  return value === 'invite' || value === 'magiclink';
+}
+
 export interface Tenant {
   id: string;
   owner_id: string;

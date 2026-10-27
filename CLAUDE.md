@@ -275,7 +275,7 @@ ON public.profiles FOR SELECT TO authenticated USING (true);
 ### Edge Functions (`supabase/functions/`)
 | File | Purpose |
 |------|---------|
-| `invite-client/index.ts` | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant |
+| `invite-client/index.ts` | Trainer invites clients (role=user, tenant auto-set); admin invites anyone (role from body); rejects duplicate emails (checks `profiles.email`) and caps invites at 100 per tenant. The returned link is `/accept-invite?token_hash=…&type=invite\|magiclink`: the token is spent by the page's button (`verifyOtp`), never by a GET. A duplicate that is inactive and never registered (the trainer's own client, or anyone for an admin) is **re-invited** with a fresh link (`magiclink` once the email was confirmed; refused if the account has workout history) instead of failing with 409 |
 | `send-push/index.ts` | Web Push delivery. Called by the DB `send_push()` function with an `x-push-secret` header; sends to a user's `push_subscriptions` and prunes endpoints that return 404/410 |
 
 ---
@@ -311,7 +311,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | File | Purpose |
 |------|---------|
 | `auth/auth.types.ts` | `UserRole` type + `Profile` interface (full column set including `assigned_planning_id`, `is_active`) |
-| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` (only redirects to the role home from `/login` or `/`, and reads the **pending** navigation via `currentPath()`: on a reload the guards hold the initial navigation, so `router.url` is still `/`, and reading it threw the deep link away). `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
+| `auth/auth.service.ts` | Signal store: `profile`, `isLoading`. `signIn`, `signUp`, `signOut`, `loadProfile`, `redirectByRole` (only redirects to the role home from `/login` or `/`, and reads the **pending** navigation via `currentPath()`: on a reload the guards hold the initial navigation, so `router.url` is still `/`, and reading it threw the deep link away). `verifyInviteToken(tokenHash, type)` / `verifyRecoveryToken` exchange an emailed one-time token for a session and are only called from a button click. `signIn`/`signUp` return a translated message for server/network failures instead of supabase-js's raw `{}` |
 | `auth/auth-errors.ts` | `isServiceUnavailable(error)` — true for `AuthRetryableFetchError` or any 5xx; keeps raw gateway errors out of the UI |
 | `guards/role.guard.ts` | `authGuard` (any authenticated user) + `roleGuard(roles[])` — both async via `toObservable(isLoading)` |
 | `supabase/supabase.client.ts` | `SUPABASE_CLIENT` InjectionToken |

@@ -4,7 +4,7 @@ import { SUPABASE_CLIENT } from '../supabase/supabase.client';
 import { ThemeService } from '../theme/theme.service';
 import { LanguageService } from '../i18n/language.service';
 import { isServiceUnavailable, type AuthFailure } from './auth-errors';
-import type { Profile, Tenant } from './auth.types';
+import type { InviteLinkType, Profile, Tenant } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -84,6 +84,15 @@ export class AuthService {
    */
   async verifyRecoveryToken(tokenHash: string): Promise<string | null> {
     const { error } = await this.supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    return error ? this.describeError(error) : null;
+  }
+
+  /**
+   * Exchanges the token from an invite link for a session. Called from a button click, never
+   * on page load, so a link previewer or scanner that only fetches the page can't spend it.
+   */
+  async verifyInviteToken(tokenHash: string, type: InviteLinkType): Promise<string | null> {
+    const { error } = await this.supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     return error ? this.describeError(error) : null;
   }
 
