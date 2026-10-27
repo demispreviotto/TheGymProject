@@ -243,7 +243,8 @@ export const dictionary = {
   'pwa.update.message':   { en: 'A new version is available.',                       es: 'Hay una nueva versión disponible.' },
   'pwa.update.action':    { en: 'Update',                                             es: 'Actualizar' },
   'pwa.update.dismiss':   { en: 'Later',                                              es: 'Después' },
-  'pwa.offline':          { en: 'You are offline. Changes need a connection to save.', es: 'Sin conexión. Los cambios necesitan conexión para guardarse.' },
+  'pwa.updating':         { en: 'Updating…',                                          es: 'Actualizando…' },
+  'pwa.offline':         { en: 'You are offline. Changes need a connection to save.', es: 'Sin conexión. Los cambios necesitan conexión para guardarse.' },
 
   // Push notifications
   'push.title':   { en: 'Notifications',                                           es: 'Notificaciones' },

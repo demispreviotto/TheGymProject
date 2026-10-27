@@ -9,7 +9,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000',
+      // Not "when stable": the update check runs behind the splash, so the worker must be
+      // registered at bootstrap, not after the app has settled.
+      registrationStrategy: 'registerImmediately',
     }),
   ],
 };
