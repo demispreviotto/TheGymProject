@@ -21,9 +21,10 @@ import { AppIconComponent } from '../../ui/icons/app-icon.component';
       >
         <app-icon name="lockers" iconClass="h-16 w-16 fill-current text-red-500" />
         @if (launch.updating()) {
-          <p class="absolute top-[calc(50%+3.5rem)] text-sm text-neutral-400">
-            {{ 'pwa.updating' | translate }}
-          </p>
+          <div class="absolute top-[calc(50%+3.5rem)]">
+            <app-icon name="spinner" iconClass="h-6 w-6 animate-spin fill-current text-neutral-400" />
+            <span class="sr-only">{{ 'pwa.updating' | translate }}</span>
+          </div>
         }
       </div>
     }

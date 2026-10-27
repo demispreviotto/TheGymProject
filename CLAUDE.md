@@ -406,7 +406,7 @@ All source lives under `src/`. Angular app root is `src/app/`.
 | `ToggleComponent` | `shared/components/toggle/` | component — accessible boolean switch styled with tenant primary color. Inputs: `active` (boolean, required). Output: `changed` (boolean). Replaces inline `role="switch"` buttons with class-mapping methods. |
 | `PageHeaderComponent` | `shared/components/page-header/` | component — standardised page title + subtitle row with `ng-content` slot for the action button. Inputs: `title` (string, required), `subtitle` (string, optional). Use at the top of every list/admin page. |
 | `UpdatePromptComponent` | `shared/components/update-prompt/` | component — banner shown when `PwaUpdateService.updateReady()`; applies the new service-worker version and reloads |
-| `SplashComponent` | `shared/components/splash/` | component — full-screen overlay (same background and lockers icon as the iOS splash images) shown while `AppLaunchService.splashVisible()`; says "Updating…" while a new version downloads. Mounted once in `AppComponent` |
+| `SplashComponent` | `shared/components/splash/` | component — full-screen overlay (same background and lockers icon as the iOS splash images) shown while `AppLaunchService.splashVisible()`; shows a small spinner under the icon (with "Updating…" as screen-reader-only text) while a new version downloads. Mounted once in `AppComponent` |
 | `OfflineBannerComponent` | `shared/components/offline-banner/` | component — banner shown while `NetworkStatusService.online()` is false |
 
 ### Shared Utilities (`src/shared/utils/`)
