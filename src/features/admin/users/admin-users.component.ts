@@ -3,6 +3,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SUPABASE_CLIENT } from '../../../core/supabase/supabase.client';
+import { InviteService } from '../../../core/invites/invite.service';
+import { ResendInviteComponent } from '../../invite/resend-invite/resend-invite.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AppIconComponent } from '../../../shared/ui/icons/app-icon.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
@@ -17,7 +19,10 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
   selector: 'app-admin-users',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, TranslatePipe, AppIconComponent, SkeletonComponent, ToggleComponent],
+  imports: [
+    FormsModule, TranslatePipe, AppIconComponent, SkeletonComponent, ToggleComponent,
+    ResendInviteComponent,
+  ],
   template: `
     <div>
       <div [class]="header()">
@@ -114,6 +119,9 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
                 <tr class="border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30">
                   <td class="px-3 sm:px-4 py-3">
                     <p class="font-medium text-neutral-100">{{ user.name }}</p>
+                    @if (!user.is_active) {
+                      <div class="mt-1.5"><app-resend-invite [email]="user.email" /></div>
+                    }
                   </td>
                   <td class="px-3 sm:px-4 py-3 text-neutral-400 text-xs hidden sm:table-cell">{{ user.email }}</td>
                   <td class="px-3 sm:px-4 py-3">
@@ -147,6 +155,7 @@ import type { Profile, UserRole } from '../../../core/auth/auth.types';
 })
 export class AdminUsersComponent implements OnInit {
   private readonly supabase = inject(SUPABASE_CLIENT);
+  private readonly invites = inject(InviteService);
 
   /** Shown inside a SnapPanels panel: the header sticks to the top of the scrolling area. */
   readonly embedded = input(false, { transform: booleanAttribute });
@@ -204,14 +213,12 @@ export class AdminUsersComponent implements OnInit {
     this.inviteState.set('sending');
     this.inviteMessage.set(null);
 
-    const { data, error } = await this.supabase.functions.invoke('invite-client', {
-      body: { email, role: this.inviteRole() },
-    });
-    if (error) {
+    const outcome = await this.invites.createLink(email, this.inviteRole());
+    if (outcome.error) {
       this.inviteState.set('error');
-      this.inviteMessage.set(error.message ?? 'Failed to generate invite.');
+      this.inviteMessage.set(outcome.error);
     } else {
-      this.inviteLink = data?.inviteLink ?? null;
+      this.inviteLink = outcome.link;
       this.inviteStep.set('ready');
       await this.loadUsers();
     }

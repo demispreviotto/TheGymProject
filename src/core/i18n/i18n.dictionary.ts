@@ -234,6 +234,10 @@ export const dictionary = {
   'invite.another':         { en: 'Invite another',                                                   es: 'Invitar a otro' },
   'invite.link.expiry':     { en: 'Link expires in 24 h · one-time use only.',                        es: 'El enlace expira en 24 h · uso único.' },
   'invite.error.invalid':   { en: 'Enter a valid email address.',                                     es: 'Ingresa un correo válido.' },
+  'invite.error.failed':    { en: 'Failed to generate invite.',                                       es: 'No se pudo generar la invitación.' },
+  'invite.resend':          { en: 'Resend invite',                                                    es: 'Reenviar invitación' },
+  'invite.shared':          { en: 'Link shared',                                                      es: 'Enlace compartido' },
+  'invite.resend.registered': { en: 'This user already registered, so there is nothing to resend. Reactivate them instead.', es: 'Este usuario ya se registró, no hay nada que reenviar. Reactívalo en su lugar.' },
 
   // PWA
   'pwa.update.message':   { en: 'A new version is available.',                       es: 'Hay una nueva versión disponible.' },
