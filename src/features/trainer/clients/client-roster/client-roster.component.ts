@@ -95,6 +95,26 @@ import type { Profile } from '../../../../core/auth/auth.types';
         <app-skeleton />
       } @else {
 
+        @if (pendingClients().length > 0) {
+          <div class="rounded-xl border border-neutral-800 overflow-hidden mb-4">
+            <p class="px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide bg-neutral-900 border-b border-neutral-800">
+              {{ 'clients.pending' | translate }} ({{ pendingClients().length }})
+            </p>
+            @for (client of pendingClients(); track client.id) {
+              <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
+                   (click)="openSheet(client)">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-neutral-200">{{ client.name }}</p>
+                  <p class="text-xs text-neutral-500 truncate">{{ client.email }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                  <app-resend-invite [email]="client.email" />
+                </div>
+              </div>
+            }
+          </div>
+        }
+
         @if (activeClients().length > 0) {
           <div class="rounded-xl border border-neutral-800 overflow-hidden mb-4">
             <table class="w-full text-sm">
@@ -126,7 +146,7 @@ import type { Profile } from '../../../../core/auth/auth.types';
               </tbody>
             </table>
           </div>
-        } @else {
+        } @else if (pendingClients().length === 0) {
           <p class="text-sm text-neutral-500 mb-4">{{ 'clients.empty' | translate }}</p>
         }
 
@@ -143,18 +163,15 @@ import type { Profile } from '../../../../core/auth/auth.types';
             @if (inactiveExpanded()) {
               <div class="border-t border-neutral-800">
                 @for (client of inactiveClients(); track client.id) {
-                  <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
+                  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/50 cursor-pointer transition-colors"
                        (click)="openSheet(client)">
-                    <div class="min-w-0">
+                    <div>
                       <p class="text-sm font-medium text-neutral-400">{{ client.name }}</p>
-                      <p class="text-xs text-neutral-600 truncate">{{ client.email }}</p>
+                      <p class="text-xs text-neutral-600">{{ client.email }}</p>
                     </div>
-                    <div class="flex flex-shrink-0 items-center gap-2">
-                      <app-resend-invite [email]="client.email" />
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-500">
-                        {{ 'common.inactive' | translate }}
-                      </span>
-                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-500">
+                      {{ 'common.inactive' | translate }}
+                    </span>
                   </div>
                 }
               </div>
@@ -188,11 +205,19 @@ export class ClientRosterComponent implements OnInit {
   readonly inviteStep = signal<'form' | 'ready'>('form');
   private inviteLink: string | null = null;
 
-  readonly activeClients = computed(() => this.clients().filter(c => c.is_active));
-  readonly inactiveClients = computed(() => this.clients().filter(c => !c.is_active));
+  /** Clients whose invitation was never accepted, whatever their `is_active` says. */
+  readonly pendingIds = signal<ReadonlySet<string>>(new Set());
+
+  readonly pendingClients = computed(() => this.clients().filter(c => this.pendingIds().has(c.id)));
+  readonly activeClients = computed(
+    () => this.clients().filter(c => c.is_active && !this.pendingIds().has(c.id)),
+  );
+  readonly inactiveClients = computed(
+    () => this.clients().filter(c => !c.is_active && !this.pendingIds().has(c.id)),
+  );
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([this.loadClients(), this.planningService.loadPlannings()]);
+    await Promise.all([this.refresh(), this.planningService.loadPlannings()]);
   }
 
   planTitle(planId: string | null): string {
@@ -233,6 +258,7 @@ export class ClientRosterComponent implements OnInit {
     } else {
       this.inviteLink = outcome.link;
       this.inviteStep.set('ready');
+      await this.refresh();
     }
   }
 
@@ -246,12 +272,17 @@ export class ClientRosterComponent implements OnInit {
   }
   openSheet(client: Profile): void { this.selectedClient.set(client); }
   closeSheet(): void { this.selectedClient.set(null); }
-  async onClientUpdated(): Promise<void> { await this.loadClients(); }
+  async onClientUpdated(): Promise<void> { await this.refresh(); }
 
-  private async loadClients(): Promise<void> {
+  private async refresh(): Promise<void> {
     this.loading.set(true);
     const trainerId = this.auth.profile()?.id;
-    this.clients.set(trainerId ? await this.clientService.loadForTrainer(trainerId) : []);
+    const [clients, pending] = await Promise.all([
+      trainerId ? this.clientService.loadForTrainer(trainerId) : Promise.resolve<Profile[]>([]),
+      this.invites.loadPendingIds(),
+    ]);
+    this.clients.set(clients);
+    this.pendingIds.set(pending);
     this.loading.set(false);
   }
 }

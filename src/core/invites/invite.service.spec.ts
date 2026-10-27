@@ -7,12 +7,14 @@ import { InviteService } from './invite.service';
 describe('InviteService', () => {
   let service: InviteService;
   let invoke: Mock;
+  let rpc: Mock;
 
   beforeEach(() => {
     invoke = vi.fn();
+    rpc = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        { provide: SUPABASE_CLIENT, useValue: createClientMock({}, { functions: { invoke } }) },
+        { provide: SUPABASE_CLIENT, useValue: createClientMock({}, { functions: { invoke }, rpc }) },
       ],
     });
     service = TestBed.inject(InviteService);
@@ -66,5 +68,19 @@ describe('InviteService', () => {
   it('treats a success answer without a link as a failure', async () => {
     invoke.mockResolvedValue({ data: { success: true }, error: null });
     expect((await service.createLink('a@x.io')).link).toBeNull();
+  });
+
+  describe('loadPendingIds', () => {
+    it('returns the ids the database reports as pending', async () => {
+      rpc.mockResolvedValue({ data: [{ user_id: 'u1' }, { user_id: 'u2' }], error: null });
+
+      expect(await service.loadPendingIds()).toEqual(new Set(['u1', 'u2']));
+      expect(rpc).toHaveBeenCalledWith('pending_invitees');
+    });
+
+    it('returns an empty set when the call fails, so no row gets a resend button by mistake', async () => {
+      rpc.mockResolvedValue({ data: null, error: { message: 'function does not exist' } });
+      expect((await service.loadPendingIds()).size).toBe(0);
+    });
   });
 });

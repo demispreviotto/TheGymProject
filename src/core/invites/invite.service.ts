@@ -50,4 +50,15 @@ export class InviteService {
       ? { link, error: null, status: 200 }
       : { link: null, error: GENERIC_FAILURE, status: 200 };
   }
+
+  /**
+   * Ids of the users the caller can see whose invitation was never accepted (no password
+   * set yet), whatever `profiles.is_active` says. Empty when the database can't answer, so
+   * a failed call only hides the resend buttons instead of showing them on the wrong rows.
+   */
+  async loadPendingIds(): Promise<ReadonlySet<string>> {
+    const { data, error } = await this.supabase.rpc('pending_invitees');
+    if (error || !Array.isArray(data)) return new Set();
+    return new Set((data as { user_id: string }[]).map(row => row.user_id));
+  }
 }

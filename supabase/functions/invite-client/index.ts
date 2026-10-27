@@ -19,7 +19,9 @@ type AdminClient = ReturnType<typeof createClient>;
 type InviteLinkType = 'invite' | 'magiclink';
 
 interface Caller { id: string; role: string }
-interface ExistingProfile { id: string; role: string; tenant_id: string | null; is_active: boolean }
+interface ExistingProfile { id: string; role: string; tenant_id: string | null }
+
+const ALREADY_EXISTS = 'A user with this email already exists';
 
 /**
  * The app page the invitee lands on. The one-time token only travels as `token_hash` and
@@ -30,24 +32,41 @@ function buildInviteLink(siteUrl: string, tokenHash: string, type: InviteLinkTyp
   return `${siteUrl}/accept-invite?token_hash=${encodeURIComponent(tokenHash)}&type=${type}`;
 }
 
-/** A trainer may re-invite their own pending client; an admin may re-invite anyone pending. */
+/** A trainer may re-invite their own client; an admin may re-invite anyone. */
 function canReinvite(caller: Caller, existing: ExistingProfile): boolean {
-  if (existing.is_active) return false;
   if (caller.role === 'admin') return true;
   return existing.role === 'user' && existing.tenant_id === caller.id;
 }
 
 /**
- * Whether the account was ever used. `is_active = false` also covers a deactivated client
- * who finished registering, and a fresh login link for one of those would let the inviter
- * sign in as them. An account with logged workouts is therefore never re-invited.
+ * Whether the invite was never accepted: the auth user has no password, which /register
+ * sets. profiles.is_active cannot say (an admin can flip it by hand, and a deactivated
+ * client who did register is inactive too), and a login link for someone who did register
+ * would let the inviter sign in as them. Null when the database could not answer.
  */
-async function hasWorkoutHistory(admin: AdminClient, userId: string): Promise<boolean | null> {
-  const { count, error } = await admin
-    .from('workout_sessions')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
-  return error ? null : (count ?? 0) > 0;
+async function isInvitePending(admin: AdminClient, userId: string): Promise<boolean | null> {
+  const { data, error } = await admin.rpc('is_invite_pending', { p_user_id: userId });
+  if (error) {
+    console.error('is_invite_pending error:', error.message);
+    return null;
+  }
+  return data === true;
+}
+
+/**
+ * Handles an invite for an email that already has a profile. Only a pending invitation
+ * (see isInvitePending) gets a fresh link; anyone else is a plain duplicate.
+ */
+async function handleExistingUser(
+  admin: AdminClient, caller: Caller, existing: ExistingProfile, email: string, siteUrl: string,
+): Promise<Response> {
+  if (!canReinvite(caller, existing)) return errorResponse(ALREADY_EXISTS, 409);
+
+  const pending = await isInvitePending(admin, existing.id);
+  if (pending === null) return errorResponse('Failed to verify existing users', 500);
+  if (!pending) return errorResponse(ALREADY_EXISTS, 409);
+
+  return await reissueInvite(admin, existing.id, email, siteUrl);
 }
 
 /**
@@ -64,12 +83,6 @@ async function reissueInvite(
   }
 
   const confirmed = !!authData.user.email_confirmed_at;
-  if (confirmed) {
-    const used = await hasWorkoutHistory(admin, userId);
-    if (used === null) return errorResponse('Failed to verify existing users', 500);
-    if (used) return errorResponse('A user with this email already exists', 409);
-  }
-
   const type: InviteLinkType = confirmed ? 'magiclink' : 'invite';
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({ type, email });
   if (linkErr) {
@@ -146,7 +159,7 @@ Deno.serve(async (req: Request) => {
     const escapedEmail = email.replace(/[%_]/g, (c) => `\\${c}`);
     const { data: existingProfile, error: existingErr } = await adminClient
       .from('profiles')
-      .select('id, role, tenant_id, is_active')
+      .select('id, role, tenant_id')
       .ilike('email', escapedEmail)
       .maybeSingle();
 
@@ -154,12 +167,8 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Failed to verify existing users', 500);
     }
     if (existingProfile) {
-      // The only duplicate that is not an error: an invited user who never finished
-      // registering, whose link expired or was already spent. Hand out a fresh one.
-      if (!canReinvite({ id: callerProfile.id, role: callerRole }, existingProfile)) {
-        return errorResponse('A user with this email already exists', 409);
-      }
-      return await reissueInvite(adminClient, existingProfile.id, email, siteUrl);
+      const caller: Caller = { id: callerProfile.id, role: callerRole };
+      return await handleExistingUser(adminClient, caller, existingProfile, email, siteUrl);
     }
 
     // Determine invite target role and tenant linkage

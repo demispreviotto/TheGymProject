@@ -236,6 +236,8 @@ export const dictionary = {
   'invite.error.invalid':   { en: 'Enter a valid email address.',                                     es: 'Ingresa un correo válido.' },
   'invite.error.failed':    { en: 'Failed to generate invite.',                                       es: 'No se pudo generar la invitación.' },
   'invite.resend':          { en: 'Resend invite',                                                    es: 'Reenviar invitación' },
+  'invite.pending':         { en: 'Invitation pending',                                               es: 'Invitación pendiente' },
+  'clients.pending':        { en: 'Pending invitations',                                              es: 'Invitaciones pendientes' },
   'invite.shared':          { en: 'Link shared',                                                      es: 'Enlace compartido' },
   'invite.resend.registered': { en: 'This user already registered, so there is nothing to resend. Reactivate them instead.', es: 'Este usuario ya se registró, no hay nada que reenviar. Reactívalo en su lugar.' },
 
