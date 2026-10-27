@@ -2,8 +2,8 @@ import {
   Component, inject, signal, computed, OnInit, ChangeDetectionStrategy,
 } from '@angular/core';
 import { PlanningService } from '../../../../core/planning/planning.service';
-import { SUPABASE_CLIENT } from '../../../../core/supabase/supabase.client';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { ClientService } from '../../../../core/clients/client.service';
 import { InviteService } from '../../../../core/invites/invite.service';
 import { ResendInviteComponent } from '../../../invite/resend-invite/resend-invite.component';
 import { ClientDetailSheetComponent } from '../client-detail-sheet/client-detail-sheet.component';
@@ -173,8 +173,8 @@ import type { Profile } from '../../../../core/auth/auth.types';
 })
 export class ClientRosterComponent implements OnInit {
   private readonly planningService = inject(PlanningService);
-  private readonly supabase = inject(SUPABASE_CLIENT);
   private readonly auth = inject(AuthService);
+  private readonly clientService = inject(ClientService);
   private readonly invites = inject(InviteService);
 
   readonly loading = signal(true);
@@ -250,14 +250,8 @@ export class ClientRosterComponent implements OnInit {
 
   private async loadClients(): Promise<void> {
     this.loading.set(true);
-    const tenantId = this.auth.profile()?.id;
-    const { data } = await this.supabase
-      .from('profiles')
-      .select('*')
-      .eq('tenant_id', this.auth.tenant()?.id ?? tenantId)
-      .neq('id', tenantId)
-      .order('name');
-    this.clients.set((data as Profile[]) ?? []);
+    const trainerId = this.auth.profile()?.id;
+    this.clients.set(trainerId ? await this.clientService.loadForTrainer(trainerId) : []);
     this.loading.set(false);
   }
 }
